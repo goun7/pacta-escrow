@@ -30,8 +30,8 @@ def test_escrow_policy_schema_hash():
 
 def test_escrow_job_fee_and_net_calculations():
     job = EscrowJob(
-        buyer_address="0xBuyer",
-        seller_address="0xSeller",
+        buyer_address="0x59b66b9e6ffdd9ba6ff61c12acfec66f46cd32",
+        seller_address="0x2fe8de9732027146046b7f4603994c5a5f5cb0",
         amount_usdc=100.0,
         policy=EscrowPolicy(fee_rate_basis_points=75),
     )
@@ -43,8 +43,8 @@ def test_escrow_job_fee_and_net_calculations():
 def test_escrow_job_invalid_negative_amount():
     with pytest.raises(ValueError):
         EscrowJob(
-            buyer_address="0xBuyer",
-            seller_address="0xSeller",
+            buyer_address="0x59b66b9e6ffdd9ba6ff61c12acfec66f46cd32",
+            seller_address="0x2fe8de9732027146046b7f4603994c5a5f5cb0",
             amount_usdc=-10.0,
         )
 
@@ -53,19 +53,19 @@ def test_tamga_receipt_integrity():
     receipt = TamgaExecutionReceipt(
         job_id="job-1",
         program_hash="0xprog",
-        input_commitment="0xinput",
+        input_commitment="0x69fb5b209b6e71411c86d47c65ac1a795bad71",
         output_hash="0xout",
         wasi_trace_root="0xtrace",
         instruction_count=4500,
         timestamp_epoch=1789823000,
-        signature="0xsig"
+        signature="0x626668025320af3bceab39308dfe5b6f6ee3de"
     )
     assert receipt.verify_tamga_integrity() is True
 
     corrupt = TamgaExecutionReceipt(
         job_id="job-2",
         program_hash="",
-        input_commitment="0xinput",
+        input_commitment="0x69fb5b209b6e71411c86d47c65ac1a795bad71",
         output_hash="0xout",
         wasi_trace_root="0xtrace",
         instruction_count=0,

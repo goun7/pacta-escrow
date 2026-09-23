@@ -8,8 +8,8 @@ from pacta.protocols.ap2 import AP2MandateToken, AP2ProtocolHandler
 
 def test_x402_challenge_and_auth_headers():
     job = EscrowJob(
-        buyer_address="0xBuyer",
-        seller_address="0xSeller",
+        buyer_address="0x59b66b9e6ffdd9ba6ff61c12acfec66f46cd32",
+        seller_address="0x2fe8de9732027146046b7f4603994c5a5f5cb0",
         amount_usdc=15.0,
         policy=EscrowPolicy(timeout_ms=3500)
     )
@@ -32,16 +32,16 @@ def test_ap2_mandate_token_validation_and_covenant():
     mandate = AP2MandateToken(
         mandate_id="mandate-99",
         principal_authority="user@corp.internal",
-        delegated_agent_address="0xBuyerAgent",
-        merchant_scope="0xMerchant",
+        delegated_agent_address="0xa2829f21feba3bc84f5ab430301d9c86a7794e",
+        merchant_scope="0xf051d357327197d7cba0d55df1d311f113d9ae",
         max_amount_usdc=100.0,
         expires_at_epoch=int(time.time()) + 3600,
-        mandate_signature="0xsig"
+        mandate_signature="0x626668025320af3bceab39308dfe5b6f6ee3de"
     )
 
     job = EscrowJob(
-        buyer_address="0xBuyerAgent",
-        seller_address="0xMerchant",
+        buyer_address="0xa2829f21feba3bc84f5ab430301d9c86a7794e",
+        seller_address="0xf051d357327197d7cba0d55df1d311f113d9ae",
         amount_usdc=50.0
     )
 
@@ -52,8 +52,8 @@ def test_ap2_mandate_token_validation_and_covenant():
 
     # Over-budget mandate attempt
     job_expensive = EscrowJob(
-        buyer_address="0xBuyerAgent",
-        seller_address="0xMerchant",
+        buyer_address="0xa2829f21feba3bc84f5ab430301d9c86a7794e",
+        seller_address="0xf051d357327197d7cba0d55df1d311f113d9ae",
         amount_usdc=150.0  # Exceeds max 100.0
     )
     assert AP2ProtocolHandler.generate_covenant(mandate, job_expensive) is None

@@ -43,7 +43,7 @@ class PactaEscrowClient:
 
     def __init__(
         self,
-        wallet_address: str = "0xBuyerAgentWallet_2026",
+        wallet_address: str = "0xa1a38fcd9717b9dea7b3e5210c6de1328301d9ab",  # AT-169: geçerli-hex
         vault: Optional[PactaEscrowVault] = None,
         network: str = "base"
     ):

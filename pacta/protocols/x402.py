@@ -27,7 +27,7 @@ class X402ProtocolHandler:
     def create_challenge_headers(
         cls,
         job: EscrowJob,
-        vault_address: str = "0xPactaSmartVaultBaseL2_2026"
+        vault_address: str = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
     ) -> Dict[str, str]:
         """Builds HTTP 402 response headers requesting escrow lock."""
         headers = {

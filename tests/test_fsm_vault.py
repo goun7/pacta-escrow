@@ -21,8 +21,8 @@ def test_fsm_invalid_transition_raises():
 def test_vault_create_lock_and_solvency():
     vault = PactaEscrowVault()
     job = vault.create_and_lock_escrow(
-        buyer_address="0xBuyer",
-        seller_address="0xSeller",
+        buyer_address="0x59b66b9e6ffdd9ba6ff61c12acfec66f46cd32",
+        seller_address="0x2fe8de9732027146046b7f4603994c5a5f5cb0",
         amount_usdc=50.0
     )
     assert job.status == EscrowStatus.ESCROW_LOCKED
@@ -33,8 +33,8 @@ def test_vault_create_lock_and_solvency():
 def test_vault_settlement_flow():
     vault = PactaEscrowVault()
     job = vault.create_and_lock_escrow(
-        buyer_address="0xBuyer",
-        seller_address="0xSeller",
+        buyer_address="0x59b66b9e6ffdd9ba6ff61c12acfec66f46cd32",
+        seller_address="0x2fe8de9732027146046b7f4603994c5a5f5cb0",
         amount_usdc=10.0
     )
     vault.submit_output(job.job_id, {"result": "data"})
@@ -51,8 +51,8 @@ def test_vault_settlement_flow():
 def test_vault_timeout_refund():
     vault = PactaEscrowVault()
     job = vault.create_and_lock_escrow(
-        buyer_address="0xBuyer",
-        seller_address="0xSeller",
+        buyer_address="0x59b66b9e6ffdd9ba6ff61c12acfec66f46cd32",
+        seller_address="0x2fe8de9732027146046b7f4603994c5a5f5cb0",
         amount_usdc=20.0
     )
     # AT-165-düzeltmesi: refund-artık-GERÇEK-SLA-aşımı-istiyor. İş-kilitli-
@@ -65,7 +65,7 @@ def test_vault_timeout_refund():
 
     # KARŞIT: zamanında-teslim-iade-edilemez ( SLA-aşımı-YOK)
     job2 = vault.create_and_lock_escrow(
-        buyer_address="0xBuyer", seller_address="0xSeller", amount_usdc=5.0)
+        buyer_address="0x59b66b9e6ffdd9ba6ff61c12acfec66f46cd32", seller_address="0x2fe8de9732027146046b7f4603994c5a5f5cb0", amount_usdc=5.0)
     try:
         vault.refund_timeout(job2.job_id)
         raise AssertionError("zamanında-teslim-iade-edildi ( HATA)")
@@ -76,8 +76,8 @@ def test_vault_timeout_refund():
 def test_vault_solvency_invariant_enforcement():
     vault = PactaEscrowVault()
     job = vault.create_and_lock_escrow(
-        buyer_address="0xBuyer",
-        seller_address="0xSeller",
+        buyer_address="0x59b66b9e6ffdd9ba6ff61c12acfec66f46cd32",
+        seller_address="0x2fe8de9732027146046b7f4603994c5a5f5cb0",
         amount_usdc=100.0
     )
     # Manually tamper with balance to simulate deficit

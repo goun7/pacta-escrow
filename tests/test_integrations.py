@@ -14,7 +14,7 @@ def test_agentkit_action_provider():
 
     assert "pacta_pay_with_escrow" in actions
     res = actions["pacta_pay_with_escrow"](
-        seller_address="0xSeller",
+        seller_address="0x2fe8de9732027146046b7f4603994c5a5f5cb0",
         amount_usdc=5.0,
         output_payload={"data": 123}
     )
@@ -26,7 +26,7 @@ def test_langchain_tool():
     client = PactaEscrowClient()
     tool = PactaEscrowTool(client)
     res = tool._run(
-        seller_address="0xSeller",
+        seller_address="0x2fe8de9732027146046b7f4603994c5a5f5cb0",
         amount_usdc=8.0,
         output_payload={"status": "completed"}
     )
@@ -37,7 +37,7 @@ def test_crewai_tool():
     client = PactaEscrowClient()
     tool = CrewAIEscrowTool(client)
     res = tool.run(
-        peer_agent_address="0xPeer",
+        peer_agent_address="0xa2fc195a903f74ff65641624a83cb95cd45c0e",
         task_bounty_usdc=12.0,
         result_payload={"analysis": "done"}
     )
@@ -53,7 +53,7 @@ def test_mcp_server_flow():
 
     # Create escrow via MCP
     create_res = server.execute_tool("pacta_create_and_lock_escrow", {
-        "seller_address": "0xMerchant",
+        "seller_address": "0xf051d357327197d7cba0d55df1d311f113d9ae",
         "amount_usdc": 25.0
     })
     job_id = create_res["job_id"]

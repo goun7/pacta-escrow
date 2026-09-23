@@ -11,7 +11,7 @@ def test_client_call_with_escrow_failure():
 
     # Simulated latency 200ms will breach 50ms SLA
     resp = client.call_with_escrow(
-        seller_address="0xSlowSeller",
+        seller_address="0xe420158b2e3e19342db59c944568d8bca73a60",
         amount=10.0,
         output_data={"fast": False},
         policy=policy,
@@ -24,7 +24,7 @@ def test_client_call_with_escrow_failure():
 
 def test_client_dispute_flow():
     client = PactaEscrowClient()
-    job = client.vault.create_and_lock_escrow("0xBuyer", "0xSeller", 30.0)
+    job = client.vault.create_and_lock_escrow("0x59b66b9e6ffdd9ba6ff61c12acfec66f46cd32", "0x2fe8de9732027146046b7f4603994c5a5f5cb0", 30.0)
     client.vault.submit_output(job.job_id, {"broken": True})
 
     dispute = client.dispute(

@@ -42,8 +42,8 @@ def test_api_metrics(client):
 def test_api_lock_and_settle_flow(client):
     # 1. Create lock
     lock_payload = {
-        "buyer_address": "0xBuyerAgent",
-        "seller_address": "0xSellerAgent",
+        "buyer_address": "0xa2829f21feba3bc84f5ab430301d9c86a7794e",
+        "seller_address": "0xee678cf83ddedbf1b2e547e7e499f06db44f90",
         "amount_usdc": 10.0,
         "timeout_ms": 5000,
         "required_schema": {"type": "object"}
@@ -79,8 +79,8 @@ def test_api_settle_not_found(client):
 def test_api_dispute_flow_and_not_found(client):
     # Create lock
     lock_payload = {
-        "buyer_address": "0xBuyerAgent",
-        "seller_address": "0xSellerAgent",
+        "buyer_address": "0xa2829f21feba3bc84f5ab430301d9c86a7794e",
+        "seller_address": "0xee678cf83ddedbf1b2e547e7e499f06db44f90",
         "amount_usdc": 20.0,
         "timeout_ms": 5000
     }
@@ -93,9 +93,9 @@ def test_api_dispute_flow_and_not_found(client):
     # Dispute
     dispute_payload = {
         "job_id": job_id,
-        "claimant_address": "0xBuyerAgent",
+        "claimant_address": "0xa2829f21feba3bc84f5ab430301d9c86a7794e",
         "reason": "Quality failure",
-        "evidence_hash": "0xevidence"
+        "evidence_hash": "0xc7d8f133d366c463b8d4fb6e5866ef275ce720"
     }
     disp_resp = client.post("/v1/escrow/dispute", json=dispute_payload)
     assert disp_resp.status_code == 200
@@ -106,7 +106,7 @@ def test_api_dispute_flow_and_not_found(client):
     # Dispute non-existent
     err_resp = client.post("/v1/escrow/dispute", json={
         "job_id": "ghost-job",
-        "claimant_address": "0xBuyerAgent",
+        "claimant_address": "0xa2829f21feba3bc84f5ab430301d9c86a7794e",
         "reason": "None",
         "evidence_hash": "0x0"
     })
@@ -147,8 +147,8 @@ def test_api_edge_errors(client):
 
     # 2. Settle with failed Tier-1 verification (400)
     lock_payload = {
-        "buyer_address": "0xBuyerAgent",
-        "seller_address": "0xSellerAgent",
+        "buyer_address": "0xa2829f21feba3bc84f5ab430301d9c86a7794e",
+        "seller_address": "0xee678cf83ddedbf1b2e547e7e499f06db44f90",
         "amount_usdc": 15.0,
         "timeout_ms": 5000,
         "required_schema": {"type": "object", "required": ["expected_field"]}

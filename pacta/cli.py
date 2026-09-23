@@ -19,7 +19,7 @@ def run_demo():
     print("=" * 70)
 
     client = PactaEscrowClient()
-    seller_address = "0xAlphaSignalBot_BaseL2"
+    seller_address = "0xe42b545eb02fce40080591fe4c289a7933f964"
 
     # SCENARIO 1: Happy Path - Verified Delivery & Optimistic Settlement
     print("\n[SCENARIO 1] Standard Atomic Delivery-versus-Payment (DvP):")
@@ -79,8 +79,9 @@ def run_demo():
     print("\n[SCENARIO 3] Subjective Quality Dispute & Schelling Arbitration Quorum:")
     vault = PactaEscrowVault()
     job = vault.create_and_lock_escrow(
-        buyer_address="0xBuyerAnalyst",
-        seller_address="0xShadyResearchBot",
+        # AT-169: demo-adresleri-artık-geçerli-hex ( katı-doğrulama)
+        buyer_address="0x59b66b9e6ffdd9ba6ff61c96c9c3d4f9b1e8a0c2",
+        seller_address="0xe25e108970af252da13b3f8c7a0e2f8b4c9d1a37",
         amount_usdc=25.0,
         policy=EscrowPolicy(dispute_bond_ratio=0.20)
     )
@@ -90,7 +91,7 @@ def run_demo():
     print("  1. Buyer reviews report, notices superficial content, files Dispute...")
     dispute = vault.raise_dispute(
         job_id=job.job_id,
-        claimant_address="0xBuyerAnalyst",
+        claimant_address="0x59b66b9e6ffdd9ba6ff61c96c9c3d4f9b1e8a0c2",
         reason="Report contains hallucinated metrics not grounded in SEC 10-K",
         evidence_hash="0xabc123..."
     )
@@ -98,11 +99,11 @@ def run_demo():
     print("  3. Summoning 5 Staked Arbitrator Nodes for Schelling Consensus...")
 
     votes = [
-        ArbitrationVote(arbitrator_address="0xArb1", vote_favor_buyer=True, staked_amount_pacta=2000.0, rationale_hash="0x1"),
-        ArbitrationVote(arbitrator_address="0xArb2", vote_favor_buyer=True, staked_amount_pacta=1500.0, rationale_hash="0x2"),
-        ArbitrationVote(arbitrator_address="0xArb3", vote_favor_buyer=True, staked_amount_pacta=3000.0, rationale_hash="0x3"),
-        ArbitrationVote(arbitrator_address="0xArb4", vote_favor_buyer=True, staked_amount_pacta=1000.0, rationale_hash="0x4"),
-        ArbitrationVote(arbitrator_address="0xArb5_Rogue", vote_favor_buyer=False, staked_amount_pacta=500.0, rationale_hash="0x5"),
+        ArbitrationVote(arbitrator_address="0x24d749ec120e581b60b3ddc5a6f4e2a1b9c8d0e3", vote_favor_buyer=True, staked_amount_pacta=2000.0, rationale_hash="0x1"),
+        ArbitrationVote(arbitrator_address="0xab8ef1ea75010c935714c9318946f37096a4490d", vote_favor_buyer=True, staked_amount_pacta=1500.0, rationale_hash="0x2"),
+        ArbitrationVote(arbitrator_address="0x7d0b86229089f159e3e7250fa16843d17ea044", vote_favor_buyer=True, staked_amount_pacta=3000.0, rationale_hash="0x3"),
+        ArbitrationVote(arbitrator_address="0xa2e8b1cbc73c1457b9cdb5344b9e8d117300b9", vote_favor_buyer=True, staked_amount_pacta=1000.0, rationale_hash="0x4"),
+        ArbitrationVote(arbitrator_address="0xd976dae00a32d27be4cf59f0e51245663f6394", vote_favor_buyer=False, staked_amount_pacta=500.0, rationale_hash="0x5"),
     ]
     outcome = vault.resolve_arbitration(dispute.dispute_id, votes)
     print(f"  4. Arbitration Decision Rendered:")

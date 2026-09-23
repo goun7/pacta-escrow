@@ -48,7 +48,7 @@ class PactaEscrowVault:
 
     USDC_TOKEN = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
 
-    def __init__(self, vault_address: str = "0xPactaSmartVaultBaseL2_2026"):
+    def __init__(self, vault_address: str = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"):
         self.vault_address = vault_address
         self.jobs: Dict[str, EscrowJob] = {}
         self.disputes: Dict[str, DisputeClaim] = {}
@@ -107,11 +107,13 @@ class PactaEscrowVault:
         # AT-169-BULGU-2-düzeltmesi: taraf-adresleri-BOŞ-kabul-ediliyordu —
         # create_and_lock_escrow("","0xseller",100) → escrow-KURULURDU ( para-
         # doğrulanır-AMA-taraflar-boş). AT-166-rol-kontrolleri-boş-adrese-
-        # karşı-çalışır-AMA-iş-zaten-boş-rollerle-kurulurdu. Katı-uzunluk
-        # yerine-boş-önek-zorunluluğu ( simülasyonda-adres-uzunlukları-değişken;
-        # asıl-açık-BOŞ-adreslerdi).
+        # karşı-çalışır-AMA-iş-zaten-boş-rollerle-kurulurdu.
+        # AT-169-ömür-boyu-borcu-ödendi: '0x'+len>=4-zayıftı ( "0xZZ"-geçerli);
+        # artık-KATI-hex — 0x-önek + >=2-hex-karakter ( gerçek-EVM-benzeri).
         for label, addr in (("buyer", buyer_address), ("seller", seller_address)):
-            if not isinstance(addr, str) or not addr.startswith("0x") or len(addr) < 4:
+            if not isinstance(addr, str) or not addr.startswith("0x") \
+                    or len(addr) < 4 or not all(c in "0123456789abcdefABCDEF"
+                                                for c in addr[2:]):
                 raise ValueError(
                     f"Invalid {label} address {addr!r}: must be non-empty "
                     f"0x-prefixed hex — AT-169"

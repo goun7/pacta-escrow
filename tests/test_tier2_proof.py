@@ -11,12 +11,12 @@ def test_tier2_tamga_receipt_success():
     receipt = TamgaExecutionReceipt(
         job_id="job-abc",
         program_hash="0xprog123",
-        input_commitment="0xinput123",
+        input_commitment="0x30774e6d336a8ad8cdb3c299e7bbd7920c4cde",
         output_hash=payload_hash,
         wasi_trace_root="0xtrace123",
         instruction_count=1250,
         timestamp_epoch=1789823000,
-        signature="0xsig123"
+        signature="0x60d3c03c30bf635b0b7452960cf96826008372"
     )
 
     res = Tier2CryptographicValidator.verify_tamga_receipt(payload, receipt)
@@ -29,12 +29,12 @@ def test_tier2_tamga_receipt_hash_mismatch():
     receipt = TamgaExecutionReceipt(
         job_id="job-abc",
         program_hash="0xprog123",
-        input_commitment="0xinput123",
+        input_commitment="0x30774e6d336a8ad8cdb3c299e7bbd7920c4cde",
         output_hash="0xwronghash",
         wasi_trace_root="0xtrace123",
         instruction_count=1250,
         timestamp_epoch=1789823000,
-        signature="0xsig123"
+        signature="0x60d3c03c30bf635b0b7452960cf96826008372"
     )
     res = Tier2CryptographicValidator.verify_tamga_receipt(payload, receipt)
     assert bool(res) is False
@@ -55,7 +55,7 @@ def test_tier2_zktls_certificate_success():
         server_name="api.nasdaq.com",
         data_hash=payload_hash,
         zk_proof_snark="0x" + "f" * 64,
-        attestation_key="0xattest"
+        attestation_key="0xbbd6b8b1235e2120b04df7b1ec85bfc5c52705"
     )
     res = Tier2CryptographicValidator.verify_zktls_certificate(payload, cert)
     assert bool(res) is False
