@@ -95,7 +95,7 @@ class PactaEscrowClient:
             http_status=200
         )
         if not tier1_res:
-            job = self.vault.refund_quality_failure(job.job_id)
+            job = self.vault.refund_quality_failure(job.job_id, self.wallet_address)
             return EscrowResponse(
                 job=job,
                 data=None,
@@ -115,7 +115,7 @@ class PactaEscrowClient:
                 t2_res = Tier2CryptographicValidator.verify_tamga_receipt(
                     output_data, tamga_receipt, expected_signer=seller_address)
                 if not t2_res:
-                    job = self.vault.refund_quality_failure(job.job_id)
+                    job = self.vault.refund_quality_failure(job.job_id, self.wallet_address)
                     return EscrowResponse(
                         job=job,
                         data=None,
@@ -125,7 +125,7 @@ class PactaEscrowClient:
             elif zktls_cert:
                 t2_res = Tier2CryptographicValidator.verify_zktls_certificate(output_data, zktls_cert)
                 if not t2_res:
-                    job = self.vault.refund_quality_failure(job.job_id)
+                    job = self.vault.refund_quality_failure(job.job_id, self.wallet_address)
                     return EscrowResponse(
                         job=job,
                         data=None,
@@ -135,7 +135,7 @@ class PactaEscrowClient:
 
         # 5. Mark Verified OK & Settle
         self.vault.mark_verified_ok(job.job_id)
-        job, tx_hash = self.vault.settle_escrow(job.job_id)
+        job, tx_hash = self.vault.settle_escrow(job.job_id, self.wallet_address)
 
         return EscrowResponse(
             job=job,

@@ -128,6 +128,14 @@ class PactaEscrowVault:
             status=EscrowStatus.INITIALIZED,
         )
         if job_id:
+            # AT-182-BULGU-2-düzeltmesi: çağıran-supplied-job_id-mevcut-job'ı
+            # SESSİZCE-üzerine-yazıyordu ( fon-kaybı: 100-USDC'lik-job-50'lik-
+            # job-ile-değişir). Çakışma-artık-reddedilir ( fail-closed; uuid4-
+            # default-yolu-değişmez).
+            if job_id in self.jobs:
+                raise ValueError(
+                    f"job_id_collision: {job_id!r} zaten-kullanımda — mevcut-"
+                    f"job'ı-üzerine-yazmak-fon-kaybına-yol-açar — AT-182")
             job.job_id = job_id
 
         # Deposit funds into vault ledger
@@ -180,15 +188,26 @@ class PactaEscrowVault:
         job.status = EscrowFSM.transition(job.status, EscrowStatus.VERIFIED_OK)
         return job
 
-    def settle_escrow(self, job_id: str) -> Tuple[EscrowJob, str]:
+    def settle_escrow(self, job_id: str,
+                      caller_address: Optional[str] = None) -> Tuple[EscrowJob, str]:
         """
         Settles verified escrow:
         Transfers (amount - fee) to seller, keeps protocol fee.
         Generates realistic EIP-1559 transaction hash via keccak256.
+        AT-180-BULGU-2: caller_address-verilirse-rol-kontrolü ( satıcı-veya-
+        alıcı-dışı-kimse-settle-edemez; FSM-double-settle-korur-AMA-ilk-çağrı-
+        korumasızdı).
         """
         if job_id not in self.jobs:
             raise EscrowNotFoundError(f"Job ID {job_id} not found.")
         job = self.jobs[job_id]
+        # AT-180-BULGU-2-düzeltmesi: rol-kapısı ( AT-166-deseni)
+        if caller_address is not None and str(caller_address).lower() not in (
+                str(job.buyer_address).lower(),
+                str(job.seller_address).lower()):
+            raise EscrowNotFoundError(
+                f"caller {str(caller_address)[:10]}… is neither buyer nor seller "
+                f"of job {job_id} — settle role check fail-closed (AT-180)")
 
         if job.status == EscrowStatus.VERIFIED_OK:
             # AT-165-BULGU-2-düzeltmesi: submit_output-timeout-kontrolü-var-AMA
@@ -250,13 +269,23 @@ class PactaEscrowVault:
         self.check_solvency_invariant()
         return job
 
-    def refund_quality_failure(self, job_id: str) -> EscrowJob:
+    def refund_quality_failure(self, job_id: str,
+                               caller_address: Optional[str] = None) -> EscrowJob:
         """Refunds buyer when verification FAILS ( not a timeout — delivery
         was wrong, not late). Ayrım ( AT-165): timeout-SLA-aşımı-ile-kalite-
-        başarısızlığı-farklı-roller; ikisi-de-alıcıyı-korumalı."""
+        başarısızlığı-farklı-roller; ikisi-de-alıcıyı-korumalı.
+        AT-180-BULGU-2: caller_address-verilirse-rol-kontrolü ( herhangi-
+        çağıran-iade-edemez)."""
         if job_id not in self.jobs:
             raise EscrowNotFoundError(f"Job ID {job_id} not found.")
         job = self.jobs[job_id]
+        # AT-180-BULGU-2-düzeltmesi: rol-kapısı ( AT-166-deseni)
+        if caller_address is not None and str(caller_address).lower() not in (
+                str(job.buyer_address).lower(),
+                str(job.seller_address).lower()):
+            raise EscrowNotFoundError(
+                f"caller {str(caller_address)[:10]}… is neither buyer nor seller "
+                f"of job {job_id} — refund role check fail-closed (AT-180)")
 
         job.status = EscrowFSM.transition(job.status, EscrowStatus.AUTO_REFUNDED_TIMEOUT)
         self.ledger_balances[job.deposit_token] = self.ledger_balances[job.deposit_token] - job.amount_usdc
