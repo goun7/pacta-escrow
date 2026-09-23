@@ -1,0 +1,33 @@
+version: "3.8"
+
+services:
+  pacta-node:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: pacta-escrow-rail
+    restart: unless-stopped
+    ports:
+      - "8090:8090"
+    environment:
+      - PACTA_NETWORK=base
+      - PACTA_RPC_URL=https://mainnet.base.org
+      - PACTA_VAULT_ADDRESS=0xPactaSmartVaultBaseL2_2026
+      - PACTA_USDC_ADDRESS=0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
+      - PACTA_TREASURY_ADDRESS=0xPactaProtocolTreasury_BaseL2
+      - PACTA_ARBITRATOR_ORACLE=0xPactaArbitrationOracle_BaseL2
+      - PACTA_PORT=8090
+      - PACTA_LOG_LEVEL=INFO
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8090/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1024M
+        reservations:
+          cpus: "0.5"
+          memory: 256M

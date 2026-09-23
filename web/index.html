@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pacta — x402 / AP2 Agent Escrow & Dispute Resolution Cockpit</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <!-- TOP NAVIGATION BAR -->
+    <header class="top-nav">
+      <div class="nav-brand">
+        <div class="logo-badge">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            <path d="m9 12 2 2 4-4"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>PACTA</h1>
+          <span class="protocol-tag">x402 / AP2 ESCROW RAIL &middot; 2026.1 SOVEREIGN</span>
+        </div>
+      </div>
+
+      <div class="nav-metrics">
+        <div class="metric-pill">
+          <span class="indicator-dot online"></span>
+          <span class="label">VAULT INVARIANT:</span>
+          <span class="val text-emerald">100% SOLVENT</span>
+        </div>
+        <div class="metric-pill">
+          <span class="label">NETWORK:</span>
+          <span class="val text-cyan">BASE L2 (EIP-4844)</span>
+        </div>
+        <div class="metric-pill">
+          <span class="label">HITL LEVEL:</span>
+          <span class="val text-amber">0% (AUTONOMOUS)</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- MAIN COCKPIT VIEW -->
+    <main class="main-content">
+      <!-- HERO STRIP & FLOW CONTROLS -->
+      <section class="control-panel card-surface">
+        <div class="panel-header">
+          <div class="header-left">
+            <h2>M2M Atomic Delivery-versus-Payment (DvP) Simulator</h2>
+            <p class="subtitle">Simulate real-time x402 challenge handshakes, Tamga WASI cryptographic proofs, and Schelling dispute arbitration.</p>
+          </div>
+          <div class="action-buttons">
+            <button id="btnRunHappy" class="btn btn-primary">
+              <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="5 3 19 12 5 21 5 3"/>
+              </svg>
+              Run DvP Settlement (Happy Path)
+            </button>
+            <button id="btnRunCorrupt" class="btn btn-outline-danger">
+              <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="15" y1="9" x2="9" y2="15"/>
+                <line x1="9" y1="9" x2="15" y2="15"/>
+              </svg>
+              Inject Schema Violation (Refund)
+            </button>
+            <button id="btnRunDispute" class="btn btn-outline-warning">
+              <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+              </svg>
+              Trigger Schelling Dispute Quorum
+            </button>
+          </div>
+        </div>
+
+        <!-- 3-ACTOR LIVE TOPOLOGY VISUALIZER -->
+        <div class="topology-stage">
+          <!-- ACTOR 1: BUYER -->
+          <div class="actor-node" id="nodeBuyer">
+            <div class="node-icon buyer-glow">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </svg>
+            </div>
+            <div class="node-meta">
+              <span class="actor-role">BUYER AGENT (CUSTOBOT)</span>
+              <span class="actor-address">0xBuyerAgent_BaseL2</span>
+              <span class="actor-status" id="buyerStatus">Idle / Listening</span>
+            </div>
+          </div>
+
+          <!-- CONNECTOR 1 -->
+          <div class="flow-wire" id="wireBuyerVault">
+            <div class="wire-track"></div>
+            <div class="wire-pulse" id="pulse1"></div>
+            <span class="wire-label" id="wireLabel1">HTTP GET /v1/alpha</span>
+          </div>
+
+          <!-- ACTOR 2: PACTA SMART VAULT -->
+          <div class="actor-node center-vault" id="nodeVault">
+            <div class="node-icon vault-glow">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+                <polyline points="2 17 12 22 22 17"/>
+                <polyline points="2 12 12 17 22 12"/>
+              </svg>
+            </div>
+            <div class="node-meta">
+              <span class="actor-role">PACTA SMART ESCROW VAULT</span>
+              <span class="actor-address">0xPactaSmartVaultBaseL2_2026</span>
+              <span class="actor-status" id="vaultStatus">State: UNINITIALIZED</span>
+            </div>
+          </div>
+
+          <!-- CONNECTOR 2 -->
+          <div class="flow-wire" id="wireVaultSeller">
+            <div class="wire-track"></div>
+            <div class="wire-pulse" id="pulse2"></div>
+            <span class="wire-label" id="wireLabel2">402 Payment Required</span>
+          </div>
+
+          <!-- ACTOR 3: SELLER -->
+          <div class="actor-node" id="nodeSeller">
+            <div class="node-icon seller-glow">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+              </svg>
+            </div>
+            <div class="node-meta">
+              <span class="actor-role">SELLER AGENT / DATA API</span>
+              <span class="actor-address">0xAlphaSignalBot_BaseL2</span>
+              <span class="actor-status" id="sellerStatus">Online & Staked</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- NAVIGATION TABS -->
+      <nav class="tab-strip">
+        <button class="tab-btn active" data-tab="tab-fsm">Protocol State Machine</button>
+        <button class="tab-btn" data-tab="tab-verification">3-Tier Verification Engine</button>
+        <button class="tab-btn" data-tab="tab-arbitration">Schelling Dispute Matrix</button>
+        <button class="tab-btn" data-tab="tab-market">Gartner $30T Custobots Radar</button>
+        <button class="tab-btn" data-tab="tab-sdk">Developer SDK & Headers</button>
+      </nav>
+
+      <!-- TAB CONTENTS -->
+      <div class="tab-content-container">
+        <!-- TAB 1: PROTOCOL STATE MACHINE -->
+        <section id="tab-fsm" class="tab-pane active">
+          <div class="split-view">
+            <div class="card-surface detail-box">
+              <h3>Active Escrow Job Inspector</h3>
+              
+              <!-- Interactive Parameter Bar -->
+              <div class="config-bar mt-2">
+                <div class="cfg-group">
+                  <label class="item-label">PRINCIPAL (USDC):</label>
+                  <input type="number" id="inputAmount" class="cfg-input mono" value="10.0" min="0.01" step="0.5">
+                </div>
+                <div class="cfg-group">
+                  <label class="item-label">TIMEOUT (MS):</label>
+                  <input type="number" id="inputTimeout" class="cfg-input mono" value="5000" min="500" step="500">
+                </div>
+                <div class="cfg-group">
+                  <label class="item-label">TIER:</label>
+                  <select id="selectTier" class="cfg-select mono">
+                    <option value="TIER1_SYNTACTIC">Tier-1 (Syntactic)</option>
+                    <option value="TIER2_CRYPTOGRAPHIC">Tier-2 (Tamga WASI)</option>
+                    <option value="TIER3_SCHELLING">Tier-3 (Schelling)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="info-grid mt-2">
+                <div class="grid-item">
+                  <span class="item-label">JOB ID:</span>
+                  <span class="item-val mono" id="dispJobId">--</span>
+                </div>
+                <div class="grid-item">
+                  <span class="item-label">PRINCIPAL:</span>
+                  <span class="item-val mono" id="dispAmount">10.000000 USDC</span>
+                </div>
+                <div class="grid-item">
+                  <span class="item-label">PROTOCOL FEE (75 bps):</span>
+                  <span class="item-val mono" id="dispFee">0.075000 USDC</span>
+                </div>
+                <div class="grid-item">
+                  <span class="item-label">SELLER PAYOUT:</span>
+                  <span class="item-val mono text-emerald" id="dispPayout">9.925000 USDC</span>
+                </div>
+                <div class="grid-item">
+                  <span class="item-label">LOCKED STATE:</span>
+                  <span class="badge" id="dispBadge">IDLE</span>
+                </div>
+                <div class="grid-item">
+                  <span class="item-label">SETTLEMENT TX:</span>
+                  <span class="item-val mono text-cyan" id="dispTx">--</span>
+                </div>
+              </div>
+
+              <div class="console-box mt-3">
+                <div class="console-title">
+                  <svg class="mini-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="4 17 10 11 4 5"/>
+                    <line x1="12" y1="19" x2="20" y2="19"/>
+                  </svg>
+                  Real-Time Event Stream (Base L2 Mempool &amp; Logs)
+                </div>
+                <pre id="consoleOutput" class="console-body mono">Waiting for trigger...</pre>
+              </div>
+            </div>
+
+            <div class="card-surface detail-box">
+              <h3>FSM Mathematical Invariants</h3>
+              <ul class="invariant-checklist">
+                <li class="inv-item pass">
+                  <span class="check-mark">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                  </span>
+                  <div>
+                    <strong>Değişmez 1: Solvency Invariant</strong>
+                    <p>Vault balance is strictly &ge; sum of locked escrows + dispute bonds at all times.</p>
+                  </div>
+                </li>
+                <li class="inv-item pass">
+                  <span class="check-mark">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                  </span>
+                  <div>
+                    <strong>Değişmez 2: Delivery Fairness (DvP)</strong>
+                    <p>Verified delivery prior to deadline strictly triggers atomic release to seller.</p>
+                  </div>
+                </li>
+                <li class="inv-item pass">
+                  <span class="check-mark">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                  </span>
+                  <div>
+                    <strong>Değişmez 3: Timeout Safety</strong>
+                    <p>Unanswered task beyond SLA threshold guarantees 100% unilateral refund to buyer.</p>
+                  </div>
+                </li>
+                <li class="inv-item pass">
+                  <span class="check-mark">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                  </span>
+                  <div>
+                    <strong>Değişmez 4: Non-Custodial Vault</strong>
+                    <p>Zero administrative backdoor keys; no unilateral withdrawals permitted.</p>
+                  </div>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- TAB 2: 3-TIER VERIFICATION ENGINE -->
+        <section id="tab-verification" class="tab-pane">
+          <div class="cards-trio">
+            <div class="card-surface tier-card">
+              <div class="tier-badge">TIER 1 &middot; ZERO GAS</div>
+              <h4>Syntactic &amp; SLA Invariant</h4>
+              <p>Off-chain relay validates HTTP 200, latency &le; SLA max, and strict JSON-Schema conformance.</p>
+              <div class="tier-status pass mt-2" id="t1Status">STATUS: ACTIVE &amp; PASSING</div>
+              <div class="code-preview mono mt-2">
+                // Schema Rule
+                {
+                  "type": "object",
+                  "required": ["status", "ticker", "action", "confidence"]
+                }
+              </div>
+            </div>
+
+            <div class="card-surface tier-card">
+              <div class="tier-badge">TIER 2 &middot; CRYPTOGRAPHIC</div>
+              <h4>Tamga WASI &amp; zkTLS</h4>
+              <p>Tamga hash-chain verifies isolated WASI execution; DECO zkTLS proves authentic TLS 1.3 web data without leaking credentials.</p>
+              <div class="tier-status pass mt-2" id="t2Status">STATUS: VERIFIED RECEIPT</div>
+              <div class="code-preview mono mt-2">
+                TamgaReceipt {
+                  instruction_count: 4,520,
+                  output_hash: "0x8f1a...b2c9",
+                  signature: "0xTamgaVerified"
+                }
+              </div>
+            </div>
+
+            <div class="card-surface tier-card">
+              <div class="tier-badge">TIER 3 &middot; GAME THEORETIC</div>
+              <h4>Schelling Quorum</h4>
+              <p>Subjective quality arbitrations solved by staked consensus quorum with quadratic slashing against deviating nodes.</p>
+              <div class="tier-status ready mt-2" id="t3Status">STATUS: 5 NODES STAKED</div>
+              <div class="code-preview mono mt-2">
+                Quorum Rule:
+                Majority &ge; 60%
+                Rogue node slashed: 10% stake
+                Anti-Griefing Bond: 20% principal
+              </div>
+            </div>
+          </div>
+
+          <!-- LIVE SCHEMA PLAYGROUND -->
+          <div class="card-surface mt-3">
+            <h3>Live Invariant Playground (JSON-Schema Validator)</h3>
+            <p class="subtitle">Test payload against Tier-1 syntactic invariants in real-time before on-chain submission.</p>
+            <div class="split-view mt-2">
+              <div>
+                <label class="item-label">TEST PAYLOAD (JSON):</label>
+                <textarea id="schemaInput" class="cfg-textarea mono mt-1" rows="6">{
+  "status": "success",
+  "ticker": "BTC/USDC",
+  "action": "BUY",
+  "confidence": 0.942
+}</textarea>
+                <button id="btnValidatePayload" class="btn btn-primary mt-2">
+                  <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                    <polyline points="22 4 12 14.01 9 11.01"/>
+                  </svg>
+                  Validate Invariant
+                </button>
+              </div>
+              <div>
+                <label class="item-label">VALIDATION RESULT &amp; TRACE:</label>
+                <div id="schemaResultBox" class="result-box mt-1 mono">Ready for inspection...</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- TAB 3: SCHELLING DISPUTE MATRIX -->
+        <section id="tab-arbitration" class="tab-pane">
+          <div class="card-surface">
+            <h3>Decentralized Arbitration Panel (Quorum Voting)</h3>
+            <p class="subtitle">Demonstrating anti-griefing bonds, focal-point convergence, and quadratic slashing of malicious minority voters.</p>
+
+            <div class="config-bar mt-2">
+              <div class="cfg-group">
+                <label class="item-label">BUYER VOTES (OUT OF 5):</label>
+                <input type="range" id="sliderBuyerVotes" min="0" max="5" value="4" class="cfg-range">
+                <span id="labelBuyerVotes" class="item-val mono text-cyan">4 Buyer / 1 Seller</span>
+              </div>
+              <div class="cfg-group">
+                <label class="item-label">DISPUTE BOND (USDC):</label>
+                <input type="number" id="inputDisputeBond" class="cfg-input mono" value="5.0" min="1.0" step="1.0">
+              </div>
+            </div>
+
+            <table class="data-table mt-3">
+              <thead>
+                <tr>
+                  <th>Arbitrator Node</th>
+                  <th>Staked ($PACTA)</th>
+                  <th>Vote Stance</th>
+                  <th>Rationale Hash</th>
+                  <th>Economic Outcome</th>
+                </tr>
+              </thead>
+              <tbody id="arbitratorTableBody">
+                <tr>
+                  <td class="mono">0xNodeAlpha_01</td>
+                  <td>2,000 PACTA</td>
+                  <td><span class="badge badge-success">FAVOR BUYER</span></td>
+                  <td class="mono">0xa1b2...3c4d</td>
+                  <td class="text-emerald">+1.25 USDC Reward</td>
+                </tr>
+                <tr>
+                  <td class="mono">0xNodeBeta_02</td>
+                  <td>1,500 PACTA</td>
+                  <td><span class="badge badge-success">FAVOR BUYER</span></td>
+                  <td class="mono">0xb2c3...4d5e</td>
+                  <td class="text-emerald">+1.25 USDC Reward</td>
+                </tr>
+                <tr>
+                  <td class="mono">0xNodeGamma_03</td>
+                  <td>3,000 PACTA</td>
+                  <td><span class="badge badge-success">FAVOR BUYER</span></td>
+                  <td class="mono">0xc3d4...5e6f</td>
+                  <td class="text-emerald">+1.25 USDC Reward</td>
+                </tr>
+                <tr>
+                  <td class="mono">0xNodeDelta_04</td>
+                  <td>1,000 PACTA</td>
+                  <td><span class="badge badge-success">FAVOR BUYER</span></td>
+                  <td class="mono">0xd4e5...6f7a</td>
+                  <td class="text-emerald">+1.25 USDC Reward</td>
+                </tr>
+                <tr class="row-slashed">
+                  <td class="mono">0xNodeEpsilon_Rogue</td>
+                  <td>500 PACTA</td>
+                  <td><span class="badge badge-danger">FAVOR SELLER</span></td>
+                  <td class="mono">0xe5f6...7a8b</td>
+                  <td class="text-rose font-bold">-50 PACTA (SLASHED)</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- TAB 4: GARTNER $30T MARKET RADAR -->
+        <section id="tab-market" class="tab-pane">
+          <div class="metrics-dashboard">
+            <div class="stat-card card-surface">
+              <span class="stat-title">GARTNER 2030 FORECAST</span>
+              <span class="stat-value text-cyan">$30 Trillion</span>
+              <span class="stat-sub">Influenced or controlled by Machine Customers (Custobots).</span>
+            </div>
+            <div class="stat-card card-surface">
+              <span class="stat-title">2026 INBOUND INTERACTIONS</span>
+              <span class="stat-value text-emerald">20% M2M</span>
+              <span class="stat-sub">One in every five commercial queries initiated by autonomous agents.</span>
+            </div>
+            <div class="stat-card card-surface">
+              <span class="stat-title">CONNECTED AGENTS (2028)</span>
+              <span class="stat-value text-amber">15 Billion</span>
+              <span class="stat-sub">Active devices &amp; AI agents managing independent purchasing power.</span>
+            </div>
+            <div class="stat-card card-surface">
+              <span class="stat-title">PACTA PROTOCOL MARGIN</span>
+              <span class="stat-value text-emerald">98.5%</span>
+              <span class="stat-sub">Base L2 EIP-4844 gas cost (~$0.0022) vs $0.15 revenue per $20 transaction.</span>
+            </div>
+          </div>
+
+          <div class="card-surface mt-3">
+            <h3>Legal &amp; Regulatory Foundation (UCC Article 12)</h3>
+            <div class="legal-grid mt-2">
+              <div class="legal-item">
+                <strong>UCC Article 12 (CER) &sect; 12-105:</strong>
+                <p>Recognizes electronic agents entering into enforceable contracts without human intervention as Controllable Electronic Records.</p>
+              </div>
+              <div class="legal-item">
+                <strong>FinCEN FIN-2019-G001 Exemption:</strong>
+                <p>Non-custodial smart contract software providers are strictly exempt from Money Services Business (MSB) licensing.</p>
+              </div>
+              <div class="legal-item">
+                <strong>Türkiye GVK 89/13 Tax Shield:</strong>
+                <p>100% foreign software export earnings deduction; 0% VAT, 0% corporate tax on non-resident software protocol income.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- TAB 5: DEVELOPER SDK -->
+        <section id="tab-sdk" class="tab-pane">
+          <div class="card-surface">
+            <h3>One-Liner Developer Integration</h3>
+            <p class="subtitle">Pacta drops into any LangChain, CrewAI, ElizaOS, or Coinbase AgentKit script in seconds.</p>
+
+            <div class="code-preview mono mt-2">
+<span class="text-cyan">from</span> pacta <span class="text-cyan">import</span> PactaEscrowClient, EscrowPolicy
+
+client = PactaEscrowClient(wallet_address=<span class="text-amber">"0xBuyerAgent"</span>, network=<span class="text-amber">"base"</span>)
+
+<span class="text-slate">// Atomic DvP API Call</span>
+resp = client.call_with_escrow(
+    seller_address=<span class="text-amber">"0xAlphaSignalBot"</span>,
+    amount=10.0,  <span class="text-slate"># 10 USDC</span>
+    output_data=payload,
+    policy=EscrowPolicy(timeout_ms=5000)
+)
+
+print(f<span class="text-amber">"Settled: {resp.success}, Tx: {resp.escrow_settle_tx}"</span>)
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <!-- TOAST NOTIFICATION CONTAINER -->
+    <div id="toastContainer" class="toast-container"></div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
