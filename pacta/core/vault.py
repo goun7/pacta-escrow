@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import time
 import hashlib
+import os  # AT-184-BULGU-3: PACTA_REQUIRE_CALLER_ROLE-ortam-kapısı
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Dict, Optional, Tuple, List, Any
 from web3 import Web3
@@ -52,6 +53,8 @@ class PactaEscrowVault:
         self.vault_address = vault_address
         self.jobs: Dict[str, EscrowJob] = {}
         self.disputes: Dict[str, DisputeClaim] = {}
+        # AT-184-BULGU-2: idempotency-anahtarı → job_id ( çift-deposit-YOK)
+        self._idempotency_keys: Dict[str, str] = {}
         self.outcomes: Dict[str, ArbitrationOutcome] = {}
         
         # Internal balance ledger: token_address -> Decimal balance
@@ -101,9 +104,18 @@ class PactaEscrowVault:
         amount_usdc: Any,
         policy: Optional[EscrowPolicy] = None,
         job_id: Optional[str] = None,
+        idempotency_key: Optional[str] = None,
     ) -> EscrowJob:
-        """Creates a new escrow agreement and locks buyer funds in the vault."""
+        """Creates a new escrow agreement and locks buyer funds in the vault.
+        AT-184-BULGU-2: idempotency_key — aynı-anahtar-ikinci-çağrıda MEVCUT-
+        job'u-döner ( para-iki-kez-hareket-ETMEZ; partition-ardışı-yeniden-
+        gönderim-güvenli). Anahtar-YOKSA-her-çağrı-yeni-job ( eski-davranış)."""
         policy = policy or EscrowPolicy()
+        # AT-184-BULGU-2-düzeltmesi: idempotency-önce-kontrol
+        if idempotency_key is not None:
+            existing = self._idempotency_keys.get(idempotency_key)
+            if existing is not None and existing in self.jobs:
+                return self.jobs[existing]
         # AT-169-BULGU-2-düzeltmesi: taraf-adresleri-BOŞ-kabul-ediliyordu —
         # create_and_lock_escrow("","0xseller",100) → escrow-KURULURDU ( para-
         # doğrulanır-AMA-taraflar-boş). AT-166-rol-kontrolleri-boş-adrese-
@@ -146,6 +158,9 @@ class PactaEscrowVault:
         job.locked_at_epoch_ms = int(time.time() * 1000)
 
         self.jobs[job.job_id] = job
+        # AT-184-BULGU-2: idempotency-anahtarını-işe-bağla ( tekrar-döndürür)
+        if idempotency_key is not None:
+            self._idempotency_keys[idempotency_key] = job.job_id
         self.check_solvency_invariant()
         return job
 
@@ -201,13 +216,24 @@ class PactaEscrowVault:
         if job_id not in self.jobs:
             raise EscrowNotFoundError(f"Job ID {job_id} not found.")
         job = self.jobs[job_id]
-        # AT-180-BULGU-2-düzeltmesi: rol-kapısı ( AT-166-deseni)
-        if caller_address is not None and str(caller_address).lower() not in (
+        # AT-184-BULGU-3-düzeltmesi: caller=None-rol-kontrolünü-atlıyordu.
+        # Artık-None-uğuntulanır + PACTA_REQUIRE_CALLER_ROLE=1-ile-reddedilir.
+        # AT-180-BULGU-2: rol-kapısı ( AT-166-deseni)
+        if caller_address is None:
+            import warnings
+            warnings.warn("caller-missing: settle_escrow-rol-kontrolü-ATLANDI "
+                          "( PACTA_REQUIRE_CALLER_ROLE=1-ile-zorunlu-kılın) — "
+                          "AT-184", stacklevel=2)
+            if os.environ.get("PACTA_REQUIRE_CALLER_ROLE"):
+                raise EscrowNotFoundError(
+                    "caller-required: settle_escrow-rol-kontrolü-zorunlu "
+                    "( PACTA_REQUIRE_CALLER_ROLE=1) — AT-184")
+        elif str(caller_address).lower() not in (
                 str(job.buyer_address).lower(),
                 str(job.seller_address).lower()):
             raise EscrowNotFoundError(
                 f"caller {str(caller_address)[:10]}… is neither buyer nor seller "
-                f"of job {job_id} — settle role check fail-closed (AT-180)")
+                f"of this job — settle role check fail-closed (AT-180)")
 
         if job.status == EscrowStatus.VERIFIED_OK:
             # AT-165-BULGU-2-düzeltmesi: submit_output-timeout-kontrolü-var-AMA
@@ -279,13 +305,24 @@ class PactaEscrowVault:
         if job_id not in self.jobs:
             raise EscrowNotFoundError(f"Job ID {job_id} not found.")
         job = self.jobs[job_id]
-        # AT-180-BULGU-2-düzeltmesi: rol-kapısı ( AT-166-deseni)
-        if caller_address is not None and str(caller_address).lower() not in (
+        # AT-184-BULGU-3-düzeltmesi: caller=None-rol-kontrolünü-atlıyordu.
+        # Artık-None-uğuntulanır + PACTA_REQUIRE_CALLER_ROLE=1-ile-reddedilir.
+        # AT-180-BULGU-2: rol-kapısı ( AT-166-deseni)
+        if caller_address is None:
+            import warnings
+            warnings.warn("caller-missing: refund-rol-kontrolü-ATLANDI "
+                          "( PACTA_REQUIRE_CALLER_ROLE=1-ile-zorunlu-kılın) — "
+                          "AT-184", stacklevel=2)
+            if os.environ.get("PACTA_REQUIRE_CALLER_ROLE"):
+                raise EscrowNotFoundError(
+                    "caller-required: refund-rol-kontrolü-zorunlu "
+                    "( PACTA_REQUIRE_CALLER_ROLE=1) — AT-184")
+        elif str(caller_address).lower() not in (
                 str(job.buyer_address).lower(),
                 str(job.seller_address).lower()):
             raise EscrowNotFoundError(
                 f"caller {str(caller_address)[:10]}… is neither buyer nor seller "
-                f"of job {job_id} — refund role check fail-closed (AT-180)")
+                f"of this job — refund role check fail-closed (AT-180)")
 
         job.status = EscrowFSM.transition(job.status, EscrowStatus.AUTO_REFUNDED_TIMEOUT)
         self.ledger_balances[job.deposit_token] = self.ledger_balances[job.deposit_token] - job.amount_usdc
@@ -316,7 +353,7 @@ class PactaEscrowVault:
                 str(job.seller_address).lower()):
             raise EscrowNotFoundError(
                 f"claimant {claimant_address[:10]}… is neither buyer nor seller "
-                f"of job {job_id} — role check fail-closed (AT-166)"
+                f"of this job — role check fail-closed (AT-166)"
             )
 
         # AT-165-BULGU-1-düzeltmesi: dispute_window_sec-modellerde-tanımlı-AMA
