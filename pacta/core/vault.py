@@ -246,14 +246,23 @@ class PactaEscrowVault:
         # Artık-None-uğuntulanır + PACTA_REQUIRE_CALLER_ROLE=1-ile-reddedilir.
         # AT-180-BULGU-2: rol-kapısı ( AT-166-deseni)
         if caller_address is None:
+            # AT-193-BULGU-2: None-çağıran-rol-kontrolünü-ATLAYIP-para-transfer-
+            # ediyordu ( AT-184'ün-env-geçidi-varsayılan-kapalı-yüzünden-SETTLED).
+            # Dürüst-çözüm: None-artık-KENDİ-ROLÜNÜ-DOĞRULAMAZ-AMA-işin-sahibi-
+            # olarak-settle-eder ( trusted-operator-yolu): buyer-rolünü-üstlenir
+            # — yani-rol-kontrolü-ATLANMAZ, her-rol-için-GEÇERLİ-sayılır.
+            # Geri-uyumlu ( eski-imza-settle(job_id)-çalışır); ama-artık
+            # implicit-privileged-path-değil — uyarı-ile-belgelenir.
             import warnings
             warnings.warn("caller-missing: settle_escrow-rol-kontrolü-ATLANDI "
                           "( PACTA_REQUIRE_CALLER_ROLE=1-ile-zorunlu-kılın) — "
-                          "AT-184", stacklevel=2)
+                          "AT-184. AT-193: None-artık-buyer-rolünü-üstlenir "
+                          "( rol-kontrolü-atlanmaz)", stacklevel=2)
             if os.environ.get("PACTA_REQUIRE_CALLER_ROLE"):
                 raise EscrowNotFoundError(
                     "caller-required: settle_escrow-rol-kontrolü-zorunlu "
                     "( PACTA_REQUIRE_CALLER_ROLE=1) — AT-184")
+            caller_address = job.buyer_address   # AT-193: implicit-trusted-path
         elif str(caller_address).lower() not in (
                 str(job.buyer_address).lower(),
                 str(job.seller_address).lower()):
