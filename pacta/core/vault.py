@@ -41,6 +41,16 @@ class EscrowNotFoundError(Exception):
         super().__init__(self.message)
 
 
+class EscrowAuthorizationError(EscrowNotFoundError):
+    """Caller lacks the required escrow role (buyer/seller).
+
+    AT-192-BULGU-1: rol-reddi eskiden ``EscrowNotFoundError`` ile aynı tipi
+    taşırdı; tüketici "job-yok" ile "yetkiniz-yok" arasında ayırt-edilemiyor
+    ( hata-kodu-tutarsızlığı). Alt-sınıf-yaparız — mevcut ``except
+    EscrowNotFoundError`` çağrıları hâlâ çalışır ( additive; kırılmaz).
+    """
+
+
 class PactaEscrowVault:
     """
     Non-custodial Escrow Vault managing state, balances, and verification flows.
@@ -56,12 +66,17 @@ class PactaEscrowVault:
         # AT-184-BULGU-2: idempotency-anahtarı → job_id ( çift-deposit-YOK)
         self._idempotency_keys: Dict[str, str] = {}
         self.outcomes: Dict[str, ArbitrationOutcome] = {}
-        
         # Internal balance ledger: token_address -> Decimal balance
         self.ledger_balances: Dict[str, Decimal] = {
             self.USDC_TOKEN: Decimal("0.000000")
         }
         self.total_protocol_revenue_usdc: Decimal = Decimal("0.000000")
+
+    def get_job(self, job_id: str) -> Optional[EscrowJob]:
+        """Read-only job lookup ( AT-192: tüketici için yardımcı — önce
+        ``self.jobs[job_id]`` AttributeError ile kırılıyordu).
+        """
+        return self.jobs.get(job_id)
 
     def check_solvency_invariant(self) -> bool:
         """
@@ -242,7 +257,7 @@ class PactaEscrowVault:
         elif str(caller_address).lower() not in (
                 str(job.buyer_address).lower(),
                 str(job.seller_address).lower()):
-            raise EscrowNotFoundError(
+            raise EscrowAuthorizationError(
                 f"caller {str(caller_address)[:10]}… is neither buyer nor seller "
                 f"of this job — settle role check fail-closed (AT-180)")
 
@@ -331,7 +346,7 @@ class PactaEscrowVault:
         elif str(caller_address).lower() not in (
                 str(job.buyer_address).lower(),
                 str(job.seller_address).lower()):
-            raise EscrowNotFoundError(
+            raise EscrowAuthorizationError(
                 f"caller {str(caller_address)[:10]}… is neither buyer nor seller "
                 f"of this job — refund role check fail-closed (AT-180)")
 
@@ -362,7 +377,7 @@ class PactaEscrowVault:
         if str(claimant_address).lower() not in (
                 str(job.buyer_address).lower(),
                 str(job.seller_address).lower()):
-            raise EscrowNotFoundError(
+            raise EscrowAuthorizationError(
                 f"claimant {claimant_address[:10]}… is neither buyer nor seller "
                 f"of this job — role check fail-closed (AT-166)"
             )
