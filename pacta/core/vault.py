@@ -139,7 +139,18 @@ class PactaEscrowVault:
             policy=policy,
             status=EscrowStatus.INITIALIZED,
         )
-        if job_id:
+        if job_id is not None:
+            # AT-188-BULGU-1-düzeltmesi: boş-string-SESSİZCE-uuid4'ye-düşüyordu
+            # ( None'ile-ayırt-edilemez-gözlem-dışı-düzeltme) + null-byte
+            # kabul-ediliyordu ( path/log-splitting-riski). Artık-her-ikisi-RED.
+            if job_id == "":
+                raise ValueError(
+                    "job_id-empty: boş-string-KABUL-EDİLMEZ — None-bırakın "
+                    "( uuid4-otomatik) veya gerçek-bir-ID-verin — AT-188")
+            if "\x00" in job_id:
+                raise ValueError(
+                    f"job_id-invalid: null-byte-içeriyor {job_id!r} — path/log-"
+                    f"splitting-riski — AT-188")
             # AT-182-BULGU-2-düzeltmesi: çağıran-supplied-job_id-mevcut-job'ı
             # SESSİZCE-üzerine-yazıyordu ( fon-kaybı: 100-USDC'lik-job-50'lik-
             # job-ile-değişir). Çakışma-artık-reddedilir ( fail-closed; uuid4-
