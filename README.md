@@ -25,6 +25,28 @@ pip install -e .                    # pydantic-v2 + eth-account
 PYTHONPATH=. python3 -m pacta.cli demo   # 3-senaryo-demo'su
 ```
 
+## ⏱️ In 30 seconds ( hızlı-bakış)
+
+```bash
+# 1) Bağımsız-doğrulama — 7-güvenlik-geçidini sıfırdan-oynar ( kanıt-entegrasyonu)
+PYTHONPATH=. python3 -m pacta.cli verify            # → SONUÇ: PASS — 7/7
+
+# 2) Makine-okunabilir-çıktı ( CI/entegrasyon-için)
+PYTHONPATH=. python3 -m pacta.cli verify --json     # → {"verdict":"PASS",...}
+
+# 3) Demo — 3-gerçek-senaryo ( DvP / bozuk-çıktı-iadesi / Schelling-hakemlik)
+PYTHONPATH=. python3 -m pacta.cli demo
+
+# 4) Sağlık
+PYTHONPATH=. python3 -m pacta.cli status            # → 100% SOLVENT
+```
+
+> `verify` çıkış-kodu: **0** = tüm-geçitler-sağlam, **1** = en-az-bir-bozuk.
+> Kontroller: `dvp_happy_path`, `refund_on_failed_verification`,
+> `schelling_arbitration_slashing`, `idempotency_no_double_lock`,
+> `role_gate_stranger_rejected`, `fsm_terminal_state_guard`,
+> `solvency_invariant`.
+
 ## Temel-API
 
 ```python
@@ -57,7 +79,7 @@ v.settle_escrow(job.job_id, caller_address=buyer)  # rol-kapısı (AT-180/184)
 ## Test
 
 ```bash
-PYTHONPATH=. python3 -m pytest tests/ -q    # 53-passed
+PYTHONPATH=. python3 -m pytest tests/ -q    # 57-passed
 ```
 
 ## Sınırlar ( dürüst)
