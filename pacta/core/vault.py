@@ -23,6 +23,7 @@ from pacta.models import (
     ZkTLSCertificate,
 )
 from pacta.core.fsm import EscrowFSM, InvalidStateTransitionError  # AT-171
+from pacta.chain import ChainUnavailableError  # AT-194: zincir-bağı-dürüst-hataları
 
 
 class InvariantViolationError(Exception):
@@ -59,8 +60,10 @@ class PactaEscrowVault:
 
     USDC_TOKEN = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
 
-    def __init__(self, vault_address: str = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"):
+    def __init__(self, vault_address: str = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+                 chain_adapter: Any = None):
         self.vault_address = vault_address
+        self.chain_adapter = chain_adapter  # AT-194: gerçek-zincir-bağı ( opsiyonel)
         self.jobs: Dict[str, EscrowJob] = {}
         self.disputes: Dict[str, DisputeClaim] = {}
         # AT-184-BULGU-2: idempotency-anahtarı → job_id ( çift-deposit-YOK)
@@ -302,8 +305,68 @@ class PactaEscrowVault:
         tx_hash = Web3.to_hex(Web3.keccak(raw_tx_bytes))
         job.settlement_tx = tx_hash
 
+        # AT-194: gerçek-zincir-bağı — EVM-node-erişilebilirse-karar-taahhüdünü
+        # gerçek-bir-transaction-ile-sabitle. Erişilemezse-dürüst-atla ( simülasyon
+        # olarak-kalır-AMA-uyarı-ile-belgelenir; sessiz-düşüş-DEĞİL).
+        if self.chain_adapter is not None:
+            job.chain_anchor = self.chain_adapter.anchor(
+                job_id=job.job_id,
+                anchor_kind="settlement",
+                terms={
+                    "amount_usdc": str(job.amount_usdc),
+                    "fee_usdc": str(fee),
+                    "net_seller_usdc": str(net_seller),
+                    "buyer": str(job.buyer_address),
+                    "seller": str(job.seller_address),
+                    "settled_at_ms": str(job.settled_at_epoch_ms),
+                },
+                to_address=job.seller_address,
+            )
+
         self.check_solvency_invariant()
         return job, tx_hash
+
+    def anchor_job(self, job_id: str, anchor_kind: str = "settlement") -> Any:
+        """Mevcut-bir-işin-kararını-gerçek-zincire-sabitle ( AT-194).
+
+        Zincir-adaptörü-yoksa-dürüst-hata: önce ``PactaEscrowVault(chain_adapter=
+        connect_anvil())``-ile-kurun. Bu, README'nin "zincir-değil-simülasyon"
+        sınırının-kapanma-yoludur.
+        """
+        from pacta.models import ChainAnchor
+        if self.chain_adapter is None:
+            raise ChainUnavailableError(
+                "no-chain-adapter: PactaEscrowVault(chain_adapter=connect_anvil()) "
+                "ile-kurun — anvil başlatın ( anvil --port 8545) veya "
+                "PACTA_RPC_URL-verin; test için connect_in_memory_evm()")
+        if job_id not in self.jobs:
+            raise EscrowNotFoundError(f"Job ID {job_id} not found.")
+        job = self.jobs[job_id]
+        terms = {
+            "amount_usdc": str(job.amount_usdc),
+            "status": job.status.value,
+            "buyer": str(job.buyer_address),
+            "seller": str(job.seller_address),
+        }
+        if job.fee_collected_usdc is not None:
+            terms["fee_usdc"] = str(job.fee_collected_usdc)
+        if job.settled_at_epoch_ms:
+            terms["settled_at_ms"] = str(job.settled_at_epoch_ms)
+        anchor = self.chain_adapter.anchor(
+            job_id=job.job_id, anchor_kind=anchor_kind, terms=terms,
+            to_address=job.seller_address)
+        job.chain_anchor = anchor
+        return anchor
+
+    def verify_chain_anchors(self) -> Dict[str, bool]:
+        """Tüm-zincir-bağını-bağımsız-olarak-yeniden-doğrula ( denetim-için).
+
+        Dönüş: {job_id: bağ-geçerli-mi}. Bağı-olmayan-işler-hariç-tutulur.
+        """
+        if self.chain_adapter is None:
+            return {}
+        return {jid: self.chain_adapter.verify_anchor(job.chain_anchor)
+                for jid, job in self.jobs.items() if job.chain_anchor is not None}
 
     def refund_timeout(self, job_id: str) -> EscrowJob:
         """Refunds buyer when execution exceeds timeout SLA."""

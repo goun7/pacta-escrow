@@ -104,6 +104,59 @@ class ZkTLSCertificate(BaseModel):
         return bool(self.session_id and self.server_name and self.data_hash and len(self.zk_proof_snark) >= 32)
 
 
+class ChainAnchor(BaseModel):
+    """Gerçek-EVM-zincirine-bağlanmış-bağ ( chain-anchoring).
+
+    Bir settlement/dispute/arbitration-kararının **gerçek-bir-zincirde** gerçek-
+    bir-transaction-ile-sabitleştirildiğini kanıtlar ( anvil, yerel-JSON-RPC
+    veya in-memory py-evm). Bağ, zincirden-bağımsız-olarak-yeniden-
+    doğrulanabilir: ``verify_against_chain``-ile-alıcı-üçüncü-bir-taraf
+    transaction-receipt'ini-fetch-edip-calldata'daki-keccak-bağını-teyit-edebilir.
+
+    Dürüst-not: değer-transferi-İÇERMEZ ( 0-wei). Pacta'nın-fon-akışı-yine-de
+    ledger-içindedir; zincir-bağı **kararın-taahhüdünü** ( commitment) sabitler
+    — bu-dürüst-bir-kapanıştır, "zincir-simülasyonu-değil"-sınırının-kapanması.
+    """
+    chain_id: int = Field(gt=0, description="Canlı zincir kimliği ( anvil=1337/31337).")
+    tx_hash: str = Field(description="0x-önekli-gerçek-transaction-hash.")
+    block_number: int = Field(ge=0)
+    gas_used: int = Field(ge=0)
+    anchor_kind: str = Field(description="settlement | dispute | arbitration | refund")
+    job_id: str
+    commitment_keccak: str = Field(description="0x-önekli-keccak256-bağı.")
+    anchored_at_epoch_ms: int
+    from_address: str
+    to_address: str
+    rpc_url: str = ""
+    backend: str = Field(description="anvil | in-memory-pyevm | json-rpc")
+    tx_status: int = Field(default=1, description="1 = EVM-başarılı ( SLOAD-çasıtlamak).")
+
+    def verify_against_chain(self, w3: Any) -> bool:
+        """Zincirden-bağımsız-yeniden-doğrulama: receipt-fetch + calldata-teyiti.
+
+        Üçüncü-bir-taraf ( alıcı, denetçi) Pacta'ya-güvenmeden-bağı-teyit-eder:
+        transaction-gerçekten-zincirde-var-olmalı-ve-calldata-bağı-eşleşmeli.
+        """
+        try:
+            receipt = w3.eth.get_transaction_receipt(self.tx_hash)
+        except Exception:
+            return False
+        if int(receipt.get("status", 0)) != 1:
+            return False
+        if int(receipt.get("blockNumber", -1)) != self.block_number:
+            return False
+        try:
+            tx = w3.eth.get_transaction(self.tx_hash)
+        except Exception:
+            return False
+        data = tx.get("input") or tx.get("data") or b""
+        if isinstance(data, str):
+            data = bytes.fromhex(data[2:] if data.startswith("0x") else data)
+        return data == bytes.fromhex(
+            self.commitment_keccak[2:] if self.commitment_keccak.startswith("0x")
+            else self.commitment_keccak)
+
+
 class EscrowJob(BaseModel):
     """Core Pacta Escrow Job Record with Decimal accounting."""
     job_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -125,6 +178,8 @@ class EscrowJob(BaseModel):
     tamga_receipt: Optional[TamgaExecutionReceipt] = None
     zktls_cert: Optional[ZkTLSCertificate] = None
     settlement_tx: Optional[str] = None
+    # AT-194-chain-anchoring: gerçek-zincir-bağı ( None = zincir-kullanılmıyor)
+    chain_anchor: Optional[ChainAnchor] = None
     fee_collected_usdc: Decimal = Field(default=Decimal("0.000000"))
 
     @field_validator("amount_usdc", mode="before")
