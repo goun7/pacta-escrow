@@ -105,3 +105,82 @@ PYTHONPATH=. python3 -m pytest tests/ -q    # 57-passed
   (hash-chain anchor, [x402 #2332](https://github.com/x402-foundation/x402/issues/2332)).
   **Ödeme-makbuz katmanı** [63-Sester](../63-Sester).
   Bu ayrım bilinçlidir: her katman tek bir işi yapar.
+
+## Akademik Kaynaklar (2024-2026)
+
+Bu çalışma aşağıdaki araştırmaya dayanır (her referans canlı
+doğrulanmıştır: arXiv abs sayfaları HTTP-200 + DOI çözümlemesi 200):
+
+- **[1] Anlaşmazlık-çözüm protokolü (dispute resolution protocol)** —
+  *BoLD: Fast and Cheap Dispute Resolution* — Alvarez et al., arXiv 2024.
+  Arbitrum için gecikme-saldırılarına-dirençli, stake-maliyeti düşürülmüş
+  yeni bir anlaşmazlık-çözüm protokolü. Pacta'nın `raise_dispute` →
+  `resolve_arbitration` akışına ve hakemlik için bond/stake ekonomisine
+  doğrudan paraleldir (§5.3 quorum + %20-bond).
+  [arXiv:2404.10491](https://arxiv.org/abs/2404.10491)
+
+- **[2] Kripto-ekonomik teşvik-tasarımı (challenge-based protocols)** —
+  *(Im)possibility of Incentive Design for Challenge-based Blockchain Protocols*
+  — Lee, Nguyen & Lee, arXiv 2025.
+  Truebit / optimistic-rollup gibi challenge-tabanlı protollerde "dürüst
+  itirazcının zarar-etmemesi" ile "dolandırıcılığın caydırılması" hedeflerinin
+  birlikte ne zaman sağlanabileceğini (tek-kazananlı: imkansız/limitli;
+  çok-kazananlı: açık koşullar) kanıtlar. Pacta'nın quadratic-slashing
+  tasarımı için temel teşvik-modeli.
+  [arXiv:2512.20864](https://arxiv.org/abs/2512.20864)
+
+- **[3] Anlaşmazlık-oyunu ekonomisi (dispute-game exploitation)** —
+  *Hollow Victory: How Malicious Proposers Exploit Validator Incentives in
+  Optimistic Rollup Dispute Games* — Lee, arXiv 2025 (WTSC 2025).
+  Dispute-game'lerinde kazanan itirazcıya yeterli ödül-aktarılmaması gibi
+  yapısal bir güvenlik-açığı; önerilen countermeasure'lar arasında
+  **escrowed reward mechanism** ve commit-reveal de var. Pacta'nın
+  slashing-dağıtımının itirazcı-teşviki açısından denetlenmesi gerekir.
+  [arXiv:2504.05094](https://arxiv.org/abs/2504.05094)
+
+- **[4] Emanet-tabanlı uzlaşma (bonded settlement + arbitration)** —
+  *Bonded Recourse for Smart-Contract Settlement of Compensable Agent Side
+  Effects* — Bindschaedler, Botha & Siebenbrunner, arXiv 2026 (BCCA 2026).
+  Ajan eylemlerini scope/recovery/evidence/payout/**collateral**'a bağlayan
+  bir smart-contract settlement protokolü; objektif iddialar
+  **optimistic-oracle challenge** ile, sübjektifler ERC-792 hakemliğine
+  yönlendirilir. Pacta'nın `create_and_lock_escrow` (emanet) +
+  `raise_dispute` (challenge/arbitration) ayrımına çok yakın bir mimari.
+  [arXiv:2609.01939](https://arxiv.org/abs/2609.01939)
+
+- **[5] İyimser uzlaşma + itiraz-tabanlı hakemlik (optimistic settlement)** —
+  *SettleFL: Trustless and Scalable Reward Settlement Protocol for Federated
+  Learning on Permissionless Blockchains* — Liang et al., arXiv 2026.
+  Trustless settlement için iki yapı: **Commit-and-Challenge** (optimistic
+  çalıştırma + itiraz-tetikli hakemlik) ve Commit-with-Proof (anında finalite).
+  Pacta'nın `submit_output` → `verify` → `settle_escrow` iyimser-yoluna ve
+  itiraz-dağıtımına karşılıktır.
+  [arXiv:2602.23167](https://arxiv.org/abs/2602.23167)
+
+- **[6] İyimser mekanizma oyun-teorisi (announcement/challenge games)** —
+  *Games in Public Announcement: How to Reduce System Losses in Optimistic
+  Blockchain Mechanisms* — Liu & Zeng, arXiv 2024.
+  Duyuru-oyunlarının (announcer vs validator-challenger) tüm Nash-dengelerini
+  ve sistem-zararını çıkarır, ödül/çaba parametrelerinin dengeye etkisini
+  analiz eder. Pacta'nın hakem-ödülleme ve SLA-eşiği parametreleri için
+  denge-tabanlı bir kalibrasyon çerçevesi.
+  [arXiv:2407.21413](https://arxiv.org/abs/2407.21413)
+
+- **[7] Çevrimiçi anlaşmazlık-çözümü + zincir-üstü emanet (ODR + escrow)** —
+  *Designing Inclusive Crypto-Asset Dispute Resolution: A Hybrid AI and Smart
+  Contract Online Dispute Resolution Framework for Vulnerable Users* —
+  Arnone & Giacalone, arXiv 2026.
+  Hibrit ODR modeli: zincir-dışı AI sınıflandırma/kanıt-düzenleme +
+  zincir-üstü **anlaşmazlık-kaydı, timestamping, doğrulama, escrow yönetimi**
+  ve sonuç-icrası. Pacta'nın fon-akışı-koruma rolünün (kanıt katmanı değil)
+  hukuki/ODR perspektifinden yansıması.
+  [arXiv:2608.14356](https://arxiv.org/abs/2608.14356)
+
+- **[8] Merkeziyetsiz hakemlik altyapısı (arbitration infrastructure)** —
+  *Bitcoin Smart Accounts: Trust-Minimized Native Bitcoin DeFi Infrastructure*
+  — Lalor, Marshall & Russo, arXiv 2026.
+  Self-custody'yi koruyan trust-minimized altyapıda **TEE-tabanli hakemlik
+  sistemi** ile honest-majority (m-of-n) varsayımını existential-honesty
+  (1-of-k)'e indirme. Pacta'nın "bağımsız-doğrulanabilir" hedefi için
+  güven-varsayımını-azaltan bir hakemlik-alternatifi.
+  [arXiv:2603.26293](https://arxiv.org/abs/2603.26293)
