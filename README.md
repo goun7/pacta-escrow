@@ -87,3 +87,21 @@ PYTHONPATH=. python3 -m pytest tests/ -q    # 57-passed
 - **Saf-bellek**: jobs/ledger/revenue `dict`-içinde; restart-kaybeder
   ( mimari-sınır — kalıcı-kanıt-katmanı tamga D5'tir; AT-177-kaydı)
 - Adresler **EVM-benzeri-ama-gerçek-zincir-değil** ( simülasyon)
+
+## Akademik & teknik temel
+
+- **Escrow as conditional payment** — klasik koşullu ödeme deseni:
+  alıcı fonları kilitler, sağlayıcı çıktı sunar, doğrulama geçerse
+  fonlar serbest kalır. Pacta bu deseni ajanlar arası SLA sözleşmeleri
+  için uygular (`create_and_lock_escrow` → `submit_output` → `verify`).
+- **Arbitration / dispute resolution** — `raise_dispute` →
+  `resolve_arbitration` akışı: kalite/SLA anlaşmazlıklarında tarafsız
+  karar mekanizması. x402 ekosistemindeki paralel tartışma:
+  [x402 #2887](https://github.com/x402-foundation/x402/issues/2887)
+  "Correctness/dispute layer downstream of settlement" — ödeme
+  başarılı olsa bile teslimat başarısız olabilir.
+- **Mesh içindeki rolü**: Pacta fon akışını korur; **kanıt katmanı
+  değildir** — kanıt [TamgaProtocol](../../05_acik_kaynak/TamgaProtocol)
+  (hash-chain anchor, [x402 #2332](https://github.com/x402-foundation/x402/issues/2332)).
+  **Ödeme-makbuz katmanı** [63-Sester](../63-Sester).
+  Bu ayrım bilinçlidir: her katman tek bir işi yapar.
