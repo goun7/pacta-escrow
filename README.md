@@ -16,6 +16,44 @@ alıcı (buyer) → create_and_lock_escrow → [para-kilitlenir]
 
 Pacta **kanıt katmanı değildir** — kanıt tamga D5-ledger'dadır (RFC-010 §6).
 Pacta, **fon akışını** korur: kimin ne zaman ödediği, kimin iade ettiği.
+Bu ayrım bilinçlidir — ama ayrım, iki katmanı **birbirine bağlamamayı** değil,
+her katmanın tek bir iş yapmasını gerektirir: aşağıdaki D5-köprüsü settlement
+kararlarını kanıt katmanına sabitler ( her iki taraf da kendi işini yapar).
+
+## 🔗 Tamga D5 köprüsü — verified delivery ( RFC-010)
+
+> **Mesh deseni:** `Escrow FSM — No Verified Delivery`. Pacta'nın FSM'i fon
+> akışını korur, ama kararlar saf-bellekte dururdu ( restart-kaybeder).
+> Köprü, settlement kararını bir **D5 hash-chain**'e sabitler:
+
+```python
+from pacta.core.vault import PactaEscrowVault
+from pacta.integrations.tamga_d5 import D5Ledger, SettlementBinder
+
+v = PactaEscrowVault(d5_ledger=D5Ledger("./ledger.jsonl"))
+job, tx = v.settle_escrow(job.job_id, caller_address=buyer)   # → charge yazıldı
+
+# alıcı ( non-custodial: anahtar vault'ta DEĞİL) claim'imzalar
+claim = SettlementBinder.build_claim(job, job.settlement_binding["delivery_hash"],
+                                     payer_signer=buyer_key)
+verdict = SettlementBinder.verify_binding(job.settlement_binding["charge"], claim)
+# → {"verdict": "GREEN", "reason_code": 0, "checks": {1..5: True}}
+```
+
+Beş-kontrol ( RFC-010 §3; fail-closed — biri-RED → tümü-RED):
+
+| # | Kontrol | Kırmızı-gerekçesi |
+|---|---|---|
+| 1 | receipt-verifies: D5-üçlüsü ( seq/prev/h) + `delivery_hash` | `receipt_invalid` |
+| 2 | claim-verifies: imza `buyerAddress`'e çözümlenir ( x402/v1) | `claim_signature_invalid` |
+| 3 | `settlementRef` == `bind.payment_id` | `settlement_ref_mismatch` |
+| 4 | claim-tarafları == escrow-tarafları | `party_mismatch` |
+| 5 | `evidenceHash` == `delivery_hash` ( bayt-eşit) | `evidence_hash_mismatch` |
+
+**Çapraz-doğrulama kanıtlandı:** Pacta'nın ürettiği charge + imzalı claim,
+Tamga'nın **kendi** `tools/settlement_bind_verify.py` gate'inde GREEN rc=0
+verir; Pacta'nın `ledger.jsonl`'i Tamga'nın `tamga_runner.py ledger-verify`'ında
+sağlam çıkar ( `tests/test_tamga_d5_bridge.py`).
 
 ## Kurulum
 
@@ -79,13 +117,16 @@ v.settle_escrow(job.job_id, caller_address=buyer)  # rol-kapısı (AT-180/184)
 ## Test
 
 ```bash
-PYTHONPATH=. python3 -m pytest tests/ -q    # 57-passed
+PYTHONPATH=. python3 -m pytest tests/ -q    # 70-passed (+5-skipped; onchain-anvil)
 ```
 
 ## Sınırlar ( dürüst)
 
 - **Saf-bellek**: jobs/ledger/revenue `dict`-içinde; restart-kaybeder
-  ( mimari-sınır — kalıcı-kanıt-katmanı tamga D5'tir; AT-177-kaydı)
+  ( mimari-sınır — kalıcı-kanıt-katmanı tamga D5'tir; AT-177-kaydı).
+  **Kapanış-yolu:** `PactaEscrowVault(d5_ledger=D5Ledger(...))` settlement
+  kararlarını D5 hash-chain'ine sabitler ( yukarıdaki §Tamga D5 köprüsü);
+  kararların-kanıtı restart'tan-sonra-da-bağımsız-doğrulanabilir.
 - Adresler **EVM-benzeri-ama-gerçek-zincir-değil** ( simülasyon)
 
 ## Akademik & teknik temel
@@ -103,7 +144,10 @@ PYTHONPATH=. python3 -m pytest tests/ -q    # 57-passed
 - **Mesh içindeki rolü**: Pacta fon akışını korur; **kanıt katmanı
   değildir** — kanıt [TamgaProtocol](../../05_acik_kaynak/TamgaProtocol)
   (hash-chain anchor, [x402 #2332](https://github.com/x402-foundation/x402/issues/2332)).
-  **Ödeme-makbuz katmanı** [63-Sester](../63-Sester).
+  **Köprü ( 2026-10-05):** `pacta/integrations/tamga_d5.py`, settlement
+  kararlarını Tamga D5-ledger'ına RFC-010 cross-artifact binding ile sabitler —
+  Tamga'nın kendi gate'i ile doğrulanır ( yukarıdaki bölüm). **Ödeme-makbuz
+  katmanı** [63-Sester](../63-Sester).
   Bu ayrım bilinçlidir: her katman tek bir işi yapar.
 
 ## Akademik Kaynaklar (2024-2026)

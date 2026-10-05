@@ -61,9 +61,14 @@ class PactaEscrowVault:
     USDC_TOKEN = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
 
     def __init__(self, vault_address: str = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-                 chain_adapter: Any = None):
+                 chain_adapter: Any = None,
+                 d5_ledger: Any = None):
         self.vault_address = vault_address
         self.chain_adapter = chain_adapter  # AT-194: gerçek-zincir-bağı ( opsiyonel)
+        # AT-195: Tamga D5-ledger ( RFC-010 settlement-binding). Verilmezse-eski
+        # davranış — kararlar-saf-bellekte-kalır ( README'nin-"kanıt-tamga'da"-
+        # sınırı-kapanma-yolundadır-AMA-zorunlu-değildir).
+        self.d5_ledger = d5_ledger
         self.jobs: Dict[str, EscrowJob] = {}
         self.disputes: Dict[str, DisputeClaim] = {}
         # AT-184-BULGU-2: idempotency-anahtarı → job_id ( çift-deposit-YOK)
@@ -322,6 +327,14 @@ class PactaEscrowVault:
                 },
                 to_address=job.seller_address,
             )
+
+        # AT-195: settlement-kararını-Tamga-D5-hash-chain'ine-sabit ( RFC-010).
+        # D5-ledger-yoksa-atlanır ( geri-uyumlu). Claim'imzalı-değildir — vault
+        # müşteri-anahtarını-tutmaz ( non-custodial); alıcı-sonradan-imzalar.
+        if self.d5_ledger is not None:
+            from pacta.integrations.tamga_d5 import SettlementBinder
+            job.settlement_binding = SettlementBinder.bind_settled_job(
+                job, self.d5_ledger).to_dict()
 
         self.check_solvency_invariant()
         return job, tx_hash

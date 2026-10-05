@@ -180,6 +180,11 @@ class EscrowJob(BaseModel):
     settlement_tx: Optional[str] = None
     # AT-194-chain-anchoring: gerçek-zincir-bağı ( None = zincir-kullanılmıyor)
     chain_anchor: Optional[ChainAnchor] = None
+    # AT-195: RFC-010 cross-artifact settlement binding — settlement-kararının
+    # Tamga-D5-hash-chain'ine-sabitlenmiş-hali ( None = D5-ledger-yapılandırılmadı;
+    # eski-davranış). charge = escrow-tarafı-kayıt, claim = alıcı-tarafı-yetki,
+    # delivery_hash = kanıtlanan-teslimatın-özeti.
+    settlement_binding: Optional[Dict[str, Any]] = None
     fee_collected_usdc: Decimal = Field(default=Decimal("0.000000"))
 
     @field_validator("amount_usdc", mode="before")
