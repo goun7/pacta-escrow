@@ -55,6 +55,52 @@ Tamga'nın **kendi** `tools/settlement_bind_verify.py` gate'inde GREEN rc=0
 verir; Pacta'nın `ledger.jsonl`'i Tamga'nın `tamga_runner.py ledger-verify`'ında
 sağlam çıkar ( `tests/test_tamga_d5_bridge.py`).
 
+## 💸 Unpump odeme kanıtı — ödeme → escrow → D5 ( 24-ajan-borsasi)
+
+> **Mesh deseni:** `External Payment — No Escrow Link`. Unpump'un borsası bir
+> ödeme kanıtı üretir ( `borsa_core.Match.work_done` + `receipt_hash`,
+> `kanit_cekirdegi`'nin Delilix SHA-256 zincirinden) — ama o kanıt Unpump'un
+> kendi zincirinde kalır ve Pacta'nın escrow kararına **bağlı değildir**.
+> Köprü iki kanıtı çapraz-uzlaştırır ve ortak sonucu D5'e sabitler:
+
+```python
+from pacta.core.vault import PactaEscrowVault
+from pacta.integrations.tamga_d5 import D5Ledger
+from pacta.integrations.unpump_bridge import UnpumpPaymentBridge, UnpumpPaymentProof
+
+# 1) ödeme: Unpump'ta iş bitti — receipt_hash kanıt zincirinden gelir
+proof = UnpumpPaymentProof.from_match(match, buyer_id=bid.buyer_id,
+                                      kanit_entry=tamga,       # {id, h, prev}
+                                      kanit_operation=islem.kanonik())  # 6-alan
+
+# 2) escrow settlement + 3) D5 kanıtı: uzlaşırsa yanına bir charge yazar
+v = PactaEscrowVault(d5_ledger=D5Ledger("./ledger.jsonl"))
+job, tx = v.settle_escrow(job.job_id, caller_address=buyer)
+b = UnpumpPaymentBridge.bind_unpump_payment(proof, job, v.d5_ledger,
+                                            payer_signer=buyer_key)
+# → charge = RFC-010 üstküsesi ( additive unpump bloğu) + alıcı-imzalı claim
+
+verdict = UnpumpPaymentBridge.verify_binding(b.charge, b.claim)
+# → {"verdict": "GREEN", "checks": {1..5 RFC-010 ∪ 6/7/8 unpump: True}}
+```
+
+RFC-010'ın beşinin üzerine üç ek kontrol ( fail-closed — biri-RED → tümü-RED):
+
+| # | Kontrol | Kırmızı-gerekçesi |
+|---|---|---|
+| 1–5 | RFC-010 beş-kontrol ( yukarıda) | `receipt_invalid` … `evidence_hash_mismatch` |
+| 6 | unpump-proof: `unpump` bloğu + `work_done` + `unpump_ref` uyumu | `unpump_proof_missing` |
+| 7 | receipt bağımsız yeniden-üretilebilir ( Unpump'un **kendi** `content_hash`'i) | `receipt_hash_mismatch` |
+| 8 | kanıtın tutar/tarafları == escrow kaydının tutar/tarafları | `escrow_reconcile_mismatch` |
+
+**Üç-yönlü çapraz-test kanıtlandı:** üretilen charge, RFC-010 beşini geçen bir
+üstkümedir ( additive — şema değişikliği yok), bu yüzden Tamga'nın **kendi**
+gate'inde GREEN rc=0 verir; Unpump'un kanıt zinciri `kanit_cekirdegi`'yle
+bağımsız teyit edilir ( `tests/test_unpump_bridge.py`). Unpump checkout'u
+erişilebilir olduğunda ( `UNPUMP_ROOT` env veya komşu dizin) köprü onun
+`borsa_core` + `kanit_cekirdegi`'yle gerçek çalışır; değilse receipt'in Delilix
+hash'i hesaplanamadığı için **İNDETERMİNE** döner — gizlice "geçti" denmez.
+
 ## Kurulum
 
 ```bash

@@ -2,6 +2,24 @@
 
 ## [Unreleased]
 
+### [Fix-2026-10-05] — Unpump ödeme kanıtı → escrow → D5 (24-ajan-borsasi)
+- **`pacta/integrations/unpump_bridge.py`** — "External Payment — No Escrow
+  Link" deseninin kapanışı: Unpump'un ödeme kanıtı ( `borsa_core.Match.work_done`
+  + `receipt_hash`, `kanit_cekirdegi`'nin Delilix SHA-256 zincirinden) settled
+  bir Pacta escrow'la çapraz-uzlaştırılır ve ortak sonuç D5-ledger'a
+  sabitlenir ( ödeme → escrow settlement → D5 kanıtı).
+- Üretilen charge RFC-010'ın **üstkümesidir** ( additive; şema değişikliği yok):
+  Tamga'nın kendi gate'inde GREEN rc=0 verir — üç-yönlü çapraz-test
+  ( Unpump ↔ Pacta ↔ Tamga).
+- Üç ek kontrol ( fail-closed): `6_unpump_proof` ( work_done + unpump_ref uyumu),
+  `7_receipt_recomputes` ( receipt Unpump'un KENDİ `content_hash`'iyle bağımsız
+  yeniden-üretilebilir — gönderenin sözüne güvenilmez), `8_escrow_reconcile`
+  ( tutar/taraflar == escrow kaydı).
+- Dürüst sınır: `kanit_cekirdegi` erişilemezse RED değil **İNDETERMİNE**
+  ( Delilix hash-sözleşmesi Unpump'un kendi modülüdür; gizlice geçilmez).
+- Testler: 70 → **76 passed** (+6; 5 skipped değişmedi) —
+  `tests/test_unpump_bridge.py`.
+
 ### [Fix-2026-10-05] — Tamga D5-ledger mesh bağlantısı (RFC-010)
 - **`pacta/integrations/tamga_d5.py`** — "Escrow FSM No Verified Delivery"
   deseninin kapanışı: bir settlement tamamlandığında karar artık bir Tamga D5
