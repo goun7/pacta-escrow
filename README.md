@@ -274,3 +274,74 @@ doğrulanmıştır: arXiv abs sayfaları HTTP-200 + DOI çözümlemesi 200):
   (1-of-k)'e indirme. Pacta'nın "bağımsız-doğrulanabilir" hedefi için
   güven-varsayımını-azaltan bir hakemlik-alternatifi.
   [arXiv:2603.26293](https://arxiv.org/abs/2603.26293)
+
+- **[9] Ajan-ekonomisi altyapısında sistematikleşme (escrow → verification →
+  settlement)** —
+  *SoK: Decentralized Agent Economic Infrastructure* — Sun, Xiong, Wang, Gao,
+  Li, Cheng, Sun & Wang, arXiv 2026.
+  Ajan görevlerinin tam yaşam-döngüsü için 17 özellik ailesi / 6 aşama
+  tanımlar; "doğru bir escrow, teslim edilen işin görevi karşıladığına dair
+  kanıt sunmayan bir onayla ödemeyi serbest bırakabilir" türü arızaları
+  sınıflandırır ve **guarantee closure** (bir aşamada kurulmuş garantilerin
+  sonraki kararları nasıl kısıtladığı) ölçütünü tanıtır. Pacta'nın
+  `submit_output` → `verify` → `settle_escrow` akışının ve
+  kanıt-öncelikli tasarımının haritalandığı çerçeve.
+  [arXiv:2610.01756](https://arxiv.org/abs/2610.01756)
+
+- **[10] AP2 ödeme protokolünde imza-kararı bağlama (intent binding)** —
+  *Signing the Transaction but Not the Decision: Whisper Attacks and a
+  Binding Defense for AP2* — Louck, Dvir & Stulman, arXiv 2026.
+  AP2 gibi ajan-ödeme protokolleri kriptografik olarak geçerli imzalar üretir
+  ama kararı kısıtlamaz: "whisper" saldırıları alışveriş ajanını her protokol
+  kontrolünü geçen ama kullanıcının isteğine uymayan sepetler kurmaya
+  yönlendirebilir. Savunma olarak önerilen A-VIP, imzalı niyeti bir
+  yetki-tahsisi (capability grant) olarak bağlar. Pacta'nın AP2/x402
+  machine-customer rayında niyet-farkının gözetlenmesi için doğrudan uyarlanan
+  saldırı/savunma analizi.
+  [arXiv:2609.11757](https://arxiv.org/abs/2609.11757)
+
+- **[11] Ajan ekonomisi için özel execution + settlement katmanı** —
+  *AGNT2: Autonomous Agent Economies on Interaction-Optimized Layer 2
+  Infrastructure* — Ruan & Zhang, arXiv 2026.
+  İnsan-finansal işlemler için optimize edilmiş L2'lerin aksine ajan
+  etkileşimlerini (kimlik, **escrow**, bağımlılık sıralaması, oturum-durumu)
+  birinci-sınıf protokol nesneleri yapar; computational fraud-proof'larla
+  settlement katmanını herhangi bir EVM L1'e bağlar. Pacta'nın
+  onchain settlement katmanının (escrow + challenge) ölçeklendirme
+  konumlandırması için sistem-mimarisi referansı.
+  [arXiv:2604.21129](https://arxiv.org/abs/2604.21129)
+
+- **[12] HTTP 402 settlement protokolü interoperabilitesi** —
+  *Agent-OSI: An Interoperability Architecture for Communication and
+  Settlement in the Decentralized Internet of Agents* — Xu, Wang, Xia, Zhang
+  & Liew, arXiv 2026.
+  HTTP 402'yi bir application-layer challenge-response ilkel olarak ele alır;
+  settlement arka ucu (**escrow sözleşmesi**, ödeme kanalı veya zincir-dışı
+  makbuz) takılabilir bir seçimdir. Pacta'nın x402/AP2 rayının "arka uç
+  olarak escrow" tasarımıyla birebir örtüşen, standart-katmanı Referansı.
+  [arXiv:2602.13795](https://arxiv.org/abs/2602.13795)
+
+- **[13] Ajan eylemlerinde settlement denetimi (order/progress/replay)** —
+  *Auditing Action Settlement in LLM Agent Environments: Order, Progress, and
+  Replay* — Chen, Ye, Zhang & Yu, arXiv 2026.
+  Eş-zamanlı ajan eylemleri için tipli snapshot-settlement sözleşmesi; sıra
+  duyarlılığı, yararlı ilerleme ve yeniden-oynatma (replay) tutarlılığını
+  denetler; tam-durum günlüğü 156 kontrol noktasını birebir yeniden oynatır ve
+  1.332 bozma denemesini reddeder. Pacta'nın deterministic
+  finite-state-machine (FSM) vault'u ve hash-chained evidence ledger'i için
+  denetlenebilirlik metodolojisi.
+  [arXiv:2610.01138](https://arxiv.org/abs/2610.01138)
+
+- **[14] Ajan ticaretinde clearing (doğrulama → settlement arası boşluk)** —
+  *RAILS: Verification-Native Clearing For Agentic Commerce* — de
+  Valois-Franklin & Bogdan, arXiv 2026.
+  "Ödeme clearing değildir; escrow clearing kararlarını tüketir" teziyle
+  ajan ticaretinde eksik primitif olarak clearing'i tanımlar; yedi primitif
+  (Obligation Object, Evidence Envelope, Verification Mesh, Clearing Decision,
+  Settlement Instruction, Clearing Passport, Finality Rules) ve
+  admissibility-graded doğrulama modeliyle "finansal olarak anlamlı hiçbir
+  settlement, yükümlülüğün kabul edilebilirlik tabanının altındaki kanıtla
+  desteklenmez" özelliğini formülleştirir. Pacta'nın
+  escrow-öncesi-verify edilmiş (verify-before-settle) akışının teorik
+  karşılığı.
+  [arXiv:2606.08790](https://arxiv.org/abs/2606.08790)
