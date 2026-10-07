@@ -235,12 +235,6 @@ def test_anchor_wraps_send_failure_as_chain_unavailable():
         adapter.anchor("job-9", "settlement", {"amount_usdc": 1})
 
 
-@pytest.mark.xfail(
-    reason="GERÇEK-BUG (Tarama-9): adapter.anchor status=int(receipt.get('status',1) or 1) "
-           "— 'or 1' falsy-status'u (0=EVM-revert, False) 1'e-zorlar; revert-sessizce "
-           "'başarılı' raporlanır. Finans-kritik: status=0 gelirse ChainUnavailableError "
-           "atılmalı. Düzeltme: or 1 yerine receipt.get('status', 1).",
-    strict=False)
 def test_anchor_raises_on_reverted_receipt_status_zero():
     eth = _FakeEth(receipt={"status": 0, "blockNumber": 43, "gasUsed": 100})
     adapter = _adapter(eth, operator="0xOPERATOR")
@@ -248,13 +242,13 @@ def test_anchor_raises_on_reverted_receipt_status_zero():
         adapter.anchor("job-10", "settlement", {"amount_usdc": 1})
 
 
-def test_anchor_currently_masks_falsy_status_documented_bug():
-    # Bu-test mevcut (bozuk) davranışı-dökümle-r: status=0 'or 1' nedeniyle 1'e-zorlanır.
-    # KESİN-DEĞİL: bu assert'ler bug düzeltilince SİLİNMELİ/xfail'e-dönmeli.
+def test_anchor_no_longer_masks_falsy_status_fixed():
+    # DÜZELTİLDİ (Fix-2026-10-08): 'or 1' kaldırıldı; status=0 artık korunur.
+    # Önceki maskelenmiş-davranış testi (tx_status == 1) kaldırıldı.
     eth = _FakeEth(receipt={"status": 0, "blockNumber": 43, "gasUsed": 100})
     adapter = _adapter(eth, operator="0xOPERATOR")
-    anchor = adapter.anchor("job-10b", "settlement", {"amount_usdc": 1})
-    assert anchor.tx_status == 1  # BUG: 0-beklenir, 1-görülür
+    with pytest.raises(ChainUnavailableError, match="anchor-reverted"):
+        adapter.anchor("job-10b", "settlement", {"amount_usdc": 1})
 
 
 def test_anchor_accepts_bool_status_true_as_success():

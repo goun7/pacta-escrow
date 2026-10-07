@@ -220,7 +220,12 @@ class EvmChainAdapter:
                 f"Operatör-hesabın-gas'i-var-mı? ( anvil-varsayılan-hesaplar-"
                 f"finanse-edilmiş; mainnet-YASAK)") from exc
 
-        status = int(receipt.get("status", 1) or 1)
+        # EVM-status: 1=başarılı, 0=revert. None güvenliği: bazı-backendler
+        # status'u None dönebilir; ama 0 (revert) ASLA 1'e zorlanmamalı.
+        # Önceki `receipt.get("status", 1) or 1` — `0 or 1` = 1 olduğundan
+        # revert'leri sessizce "başarılı" maskeliyordu (finans-kritik bug).
+        _status_raw = receipt.get("status", 1)
+        status = int(_status_raw) if _status_raw is not None else 1
         # EVM-status: 1=başarılı, 0=revert. Bazı-backendler-True/False-döner.
         if isinstance(status, bool):
             status = 1 if status else 0
