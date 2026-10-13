@@ -163,8 +163,13 @@ v.settle_escrow(job.job_id, caller_address=buyer)  # rol-kapısı (AT-180/184)
 ## Test
 
 ```bash
-PYTHONPATH=. python3 -m pytest tests/ -q    # 70-passed (+5-skipped; onchain-anvil)
+PYTHONPATH=. python3 -m pytest tests/ -q    # 1.113-passed (+5-skipped; onchain-anvil)
 ```
+
+2026-10-13 LEED-ölçümü: 1.113 passed / 0 failed rc=0. Bu sayı, bu repodaki
+`tests/`-suitinin tamamıdır; `test_unpump_bridge.py`'nin Tamga-gate
+çapraz-testleri dahil ( `TamgaProtocol/tools/settlement_bind_verify.py`
+üzerinden üçüncü-proje-doğrulaması — bkz. §Tamga D5 köprüsü).
 
 ## Sınırlar ( dürüst)
 
