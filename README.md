@@ -163,7 +163,7 @@ v.settle_escrow(job.job_id, caller_address=buyer)  # rol-kapısı (AT-180/184)
 ## Test
 
 ```bash
-PYTHONPATH=. python3 -m pytest tests/ -q    # 1.113-passed (+5-skipped; onchain-anvil)
+PYTHONPATH=. python3 -m pytest tests/ -q    # 1.396-passed (+5-skipped; onchain-anvil)
 ```
 
 2026-10-13 LEED-ölçümü: 1.113 passed / 0 failed rc=0. Bu sayı, bu repodaki
