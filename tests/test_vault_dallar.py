@@ -228,19 +228,18 @@ class TestSolvencyInvariant:
         kasa.ledger_balances[USDC] = Decimal("100")
         assert kasa.check_solvency_invariant() is True
 
-    def test_yetim_dispute_keyerror(self, kasa):
-        """BULGU ( karakterizasyon; üretime-DOKUNULMADI):
-        check_solvency_invariant, ``self.disputes``-içindeki-bir-dispute'un
-        ``job_id``'si ``self.jobs``'te-YOKSA ``KeyError``-fırlatır ( graceful-
-        InvariantViolationError/atlatma-YERINE). jobs ile disputes arasındaki
-        referans-bütünlüğü-kontrolü-YOK. Üretimde-dispute-kayıtları-elle-
-        enjekte-edilirse-veya-jobs-temizlenirse-solvensiz-denetimi-çöker.
-        """
+    def test_yetim_dispute_invariant_hatasi(self, kasa):
+        """BULGU (DUZELTILDI PACTA-VLT-1): check_solvency_invariant,
+        ``self.disputes``-içindeki-bir-dispute'un ``job_id``'si
+        ``self.jobs``'te-YOKSA artik **fail-closed InvariantViolationError**
+        firlatir (eskiden ham KeyError-cokusu). Graceful-atlama yerine
+        fail-closed-sectik: bag-eksik-saymak-invariant'i-zayiflatirdi."""
         kasa.disputes["d1"] = DisputeClaim(
             job_id="yok-boyle-is", claimant_address=ALICI,
             bond_amount_usdc=Decimal("1"), reason="sebep", evidence_hash="0xK")
-        with pytest.raises(KeyError):
+        with pytest.raises(InvariantViolationError) as hb:
             kasa.check_solvency_invariant()
+        assert "Orphan dispute" in hb.value.message
 
 
 # ================================================ create_and_lock_escrow
@@ -449,17 +448,17 @@ class TestSubmitOutput:
         assert kasa.ledger_balances[USDC] == Decimal("0.000000")
         assert dönen.output_payload is None  # payload-kayıtlanmamış-döner
 
-    def test_sla_asiminda_settled_at_bos_kalir(self, kasa, saat):
-        """BULGU ( karakterizasyon; üretime-DOKUNULMADI): submit_output'un
-        zaman-aşımı-dalı ``settled_at_epoch_ms``'i-AYARLAMAZ ( refund_timeout
-        ayarlar). İade-zaman-damgası-denetim-kaydında-kayıp — terminal-iadenin
-        ne-zaman-oluştuğu-iş-kaydından-okunamaz."""
+    def test_sla_asiminda_settled_at_doludur(self, kasa, saat):
+        """BULGU (DUZELTILDI PACTA-VLT-2): submit_output'un zaman-aşımı-dalı
+        artik ``settled_at_epoch_ms``'i-AYARLAR — terminal-iaudenin-zaman-
+        damgasi-denetim-kaydında-kayıp-degil (diger-settle-dalları-gibi)."""
         is_ = kasa.create_and_lock_escrow(ALICI, SATICI, 1,
                                           policy=EscrowPolicy(timeout_ms=1000))
         saat["su_an"] = 1_000_000.0 + 2.0
         dönen = kasa.submit_output(is_.job_id, {"cikti": 1})
         assert dönen.status == EscrowStatus.AUTO_REFUNDED_TIMEOUT
-        assert dönen.settled_at_epoch_ms is None
+        assert dönen.settled_at_epoch_ms is not None
+        assert dönen.settled_at_epoch_ms > 0
 
     def test_locked_at_yoksa_asim_kontrolu_atlanir(self, kasa, saat):
         is_ = kasa.create_and_lock_escrow(ALICI, SATICI, 1,

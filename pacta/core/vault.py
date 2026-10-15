@@ -103,14 +103,25 @@ class PactaEscrowVault:
              }),
             Decimal("0.000000")
         )
-        active_bonds = sum(
-            (d.bond_amount_usdc for d in self.disputes.values()
-             if self.jobs[d.job_id].status in {
-                 EscrowStatus.DISPUTED,
-                 EscrowStatus.ARBITRATION_IN_PROGRESS
-             }),
-            Decimal("0.000000")
-        )
+        active_bonds = Decimal("0.000000")
+        # PACTA-VLT-1-DUZELTME: yetim-dispute ( job_id self.jobs'te YOKSA)
+        # eskiden ham KeyError-çöküşü-veriyordu — graceful-atlama da
+        # bag'tan-sorumlu-tutari-eksik-sayip invariant'I ZAYIFLATIRDI
+        # (fail-open). Referans-butunlugu-ihlali-kendisi-bir-invariant-
+        # bozuklugudur: fail-closed InvariantViolationError.
+        for dispute_id, d in self.disputes.items():
+            job = self.jobs.get(d.job_id)
+            if job is None:
+                raise InvariantViolationError(
+                    "Solvency Invariant Broken! Orphan dispute "
+                    f"{dispute_id}: job_id={d.job_id} vault.jobs'ta-yok "
+                    "(dispute<->job referans-butunlugu)"
+                )
+            if job.status in {
+                EscrowStatus.DISPUTED,
+                EscrowStatus.ARBITRATION_IN_PROGRESS
+            }:
+                active_bonds += d.bond_amount_usdc
         required_minimum = active_locked + active_bonds
         actual_balance = self.ledger_balances[self.USDC_TOKEN]
 
@@ -215,6 +226,11 @@ class PactaEscrowVault:
         # Check if SLA timeout already occurred
         if job.locked_at_epoch_ms and (now_ms - job.locked_at_epoch_ms > job.policy.timeout_ms):
             job.status = EscrowFSM.transition(job.status, EscrowStatus.AUTO_REFUNDED_TIMEOUT)
+            # PACTA-VLT-2-DUZELTME: terminal-gecis-settle-damgasi — diger
+            # settle-dallari ( L309/L416/L451) filled oldugu halde zaman-asimi
+            # iade-dali settled_at_epoch_ms'i BOS birakiyordu — audit-izinde
+            # "settled_at_ms: None" tutarsizligi.
+            job.settled_at_epoch_ms = now_ms
             # Refund to buyer
             self.ledger_balances[job.deposit_token] = self.ledger_balances[job.deposit_token] - job.amount_usdc
             self.check_solvency_invariant()
