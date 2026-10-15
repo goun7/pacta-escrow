@@ -129,7 +129,7 @@ class D5Ledger:
         if not rec.get("op"):
             raise D5LedgerError("op_required: RFC-003 kayıtları bir op taşır")
         with self._lock:
-            last_rec, n = None, 0
+            last_rec, prev_rec, n = None, None, 0
             if self.path.exists():
                 with open(self.path, "r", encoding="utf-8") as f:
                     for line in f:
@@ -139,6 +139,7 @@ class D5Ledger:
                         try:
                             cand = json.loads(line)
                             if cand.get("h"):
+                                prev_rec = last_rec
                                 last_rec = cand
                         except Exception:
                             pass            # sayılır-AMA-h-yok → son-geçerli-kalır
@@ -146,6 +147,23 @@ class D5Ledger:
                 raise D5LedgerError(
                     "ledger_broken: kuyrukta geçerli head yok — kırık zincirin "
                     "ardına eklenmez (fail-closed)")
+            # PACTA-1 (DUZELTILDI): docstring-'kırık-zincirin-ardına-eklenmez'
+            # sozunu-eski-kod-sadece-'h'-varligina-bakarak-ihlal-ediyordu —
+            # elle-kirik-prev'li-ama-'h'-tasiyan-kuyruk-geciyordu. Artik-son-
+            # kaydinin-h-degeri-yeniden-hesaplanip-karsilastirilir ( self-
+            # consistent-head-yoksa-fail-closed).
+            if last_rec is not None:
+                _l_no_h = {k: v for k, v in last_rec.items()
+                           if k not in ("h", "node_sig")}
+                _l_h = hashlib.sha256(
+                    str(last_rec.get("prev", "")).encode("utf-8")
+                    + jcs(_l_no_h)).hexdigest()
+                _l_prev_expected = (prev_rec["h"] if prev_rec else GENESIS_PREV)
+                if (_l_h != last_rec.get("h")
+                        or last_rec.get("prev") != _l_prev_expected):
+                    raise D5LedgerError(
+                        "ledger_broken: kuyruk-head tutarsız — prev/h zinciri "
+                        "kirik (fail-closed)")
             rec = dict(rec)                  # çağıranı-mutasyona-uğratma
             rec["seq"] = n + 1
             rec["prev"] = last_rec["h"] if last_rec else GENESIS_PREV
@@ -241,7 +259,11 @@ class SettlementBinder:
         ``settlement_bind``-RFC-010-şekline-uyar: additive-alan, şema-değişikliği-YOK.
         """
         dh = delivery_hash or cls.compute_delivery_hash(job)
-        if len(dh) != 64 or any(c not in "0123456789abcdef" for c in dh.lower()):
+        # PACTA-2 (DUZELTILDI): '.lower()'-gizlemesi-BUYUK-harfi-geciriyordu —
+        # _d5_triple_ok-ve-verify_binding-her-downstream-kapi-kucuk-har-
+        # bekler ( 'AB'*32-burada-gecipte-ileride-receipt_invalid-cakis-
+        # yordu). Artik-tum-protokol-arisinda-sadece-kucuk-hex-gecerlidir.
+        if len(dh) != 64 or any(c not in "0123456789abcdef" for c in dh):
             raise ValueError(f"delivery_hash_invalid: 64-hex-beklendi ( {dh!r})")
         return {
             "op": "charge",

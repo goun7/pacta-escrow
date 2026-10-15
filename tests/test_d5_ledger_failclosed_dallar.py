@@ -236,19 +236,21 @@ def test_append_tumu_bosuk_tail_fail_closed(ledger):
         ledger.append({"op": "charge"})
 
 
-def test_append_h_var_ama_prev_kirik_ekler_dokumanda_kirik_kalir(ledger):
-    """GERCEK DAVRANIS (bulgu PACTA-1): append yalnizca 'h' varligina bakar —
-    prev-zincirini DOGRULAMAZ. Docstring'i ('kırık zincirin ardına eklenmez')
-    ile celisir: kirik kuyruk 'h' tasiyorsa ekleme yapilir ve head() yine
-    'broken' raporlar. Bu test mevcut davranisi sabitler (uretime DOKUNMA)."""
+def test_append_prev_kirik_kuyrugu_rededer_pacta1(ledger):
+    """PACTA-1 (DUZELTILDI): append-sadece-'h'-varligina-bakmiyor-artik —
+    kuyruk-head'in-prev-baglantisi-GENESIS/onceki-h-olmali-ve-h-yeniden
+    hesaplanip-karsilastiriliyor. Kirik-zincirin-ardina-eklenmez ( fail-
+    closed-docstring-artik-gecerli)."""
+    import pytest as _pt
+    from pacta.integrations.tamga_d5 import D5LedgerError
     rec = ledger.append({"op": "charge"})
     kirik = dict(rec)
     kirik["prev"] = "f" * 64
     kirik["h"] = _recompute_h(kirik)
     with open(ledger.path, "w", encoding="utf-8") as f:
         f.write(json.dumps(kirik, sort_keys=True) + "\n")
-    yeni = ledger.append({"op": "verify"})
-    assert yeni["seq"] == 2 and yeni["prev"] == kirik["h"]
+    with _pt.raises(D5LedgerError, match="ledger_broken"):
+        ledger.append({"op": "verify"})
     _, why = ledger.head()
     assert why == "broken@1"   # append kirik zinciri 'tamir etmedi' — izin verdi
 
@@ -489,10 +491,12 @@ def test_build_charge_hex_olmayan_reddeder(buyer, settled):
         SettlementBinder.build_charge(settled, "z" * 64)
 
 
-def test_build_charge_buyuk_hex_kabul(buyer, settled):
-    """Dogrulama .lower() uzerinden — BUYUK harf kabul edilir."""
-    c = SettlementBinder.build_charge(settled, "AB" * 32)
-    assert c["delivery_hash"]["hex"] == "AB" * 32
+def test_build_charge_buyuk_hex_reddedilir_pacta2(buyer, settled):
+    """PACTA-2 (DUZELTILDI): .lower()-gizlemesi-kaldirildi — BUYUK harf
+    hex-artik-build-asil-kapisinda-reddedilir ( downstream-'receipt_invalid'
+    gizemli-basarisizliklari-onler)."""
+    with pytest.raises(ValueError, match="delivery_hash_invalid"):
+        SettlementBinder.build_charge(settled, "AB" * 32)
 
 
 # --- build_claim / sign_claim / _signer_address -------------------------------------
