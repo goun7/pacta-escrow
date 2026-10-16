@@ -436,8 +436,11 @@ def test_anchor_status_none_basari_kabul():
 
 
 def test_anchor_status_true_basari():
-    """Bazi-backendler bool doner — int(True)=1 -> basari (not: bool-dali
-    'status = 1 if status else 0' satiri 231 bu yolla ulasilamaz; bkz. PACTA-3)."""
+    """Bazi-backendler bool doner — int(True)=1 -> basari.
+    (PACTA-3-triage-DUZELTILDI: 'status = 1 if status else 0'-bool-dali
+    ``int(_status_raw)``-zaten-bool'u-1/0-yaptığı-için-HİÇBİR-zaman-
+    çalışamazdı — ölü-kod-adapter'dan-kaldırıldı; davranış-aynı: True→1,
+    False→0/revert.)"""
     adp = _anchor_adapter(receipt=_ok_receipt(status=True))
     assert adp.anchor("j-1", "settlement", {"a": "1"}).tx_status == 1
 

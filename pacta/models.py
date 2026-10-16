@@ -185,7 +185,11 @@ class EscrowJob(BaseModel):
     # eski-davranış). charge = escrow-tarafı-kayıt, claim = alıcı-tarafı-yetki,
     # delivery_hash = kanıtlanan-teslimatın-özeti.
     settlement_binding: Optional[Dict[str, Any]] = None
-    fee_collected_usdc: Decimal = Field(default=Decimal("0.000000"))
+    # PACTA-VLT-4-DUZELTME: None = fee-henüz-TAHSİL-EDİLMEDİ ( settle-öncesi).
+    # Eski-varsayılan ``0.000000``-idi: settle-öncesi-işlerde-"tahsil-edilmiş-
+    # fee=0"gibi-GÖRÜNÜP-zincir-bağı-terms'inde-sessiz-sıfır-ücret-
+    # sabitliyordu. Gerçek-değer-settle_escrow'da-yazılır.
+    fee_collected_usdc: Optional[Decimal] = Field(default=None)
 
     @field_validator("amount_usdc", mode="before")
     def convert_amount_to_decimal(cls, v: Any) -> Decimal:

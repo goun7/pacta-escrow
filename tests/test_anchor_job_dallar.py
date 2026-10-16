@@ -139,13 +139,15 @@ def test_fee_included_when_settled(vault):
     assert terms["fee_usdc"] == "0.075000"
 
 
-def test_fee_zero_before_settle(vault):
-    """Üretim: LOCKED işte fee_usdc sifir olarak bulunur."""
+def test_fee_absent_before_settle(vault):
+    """PACTA-VLT-4: LOCKED işte-fee_usdc-terms'e-KONMAZ ( eski-pin-"sifir-
+    olarak-bulunur"-diyordu — sessiz-sıfır-ücret-sabitlemesiydi; fee
+    settle'da-tahsil-edilir, öncesi-"henüz-yok")."""
     job = _job(vault)
     ad = _adapter(vault)
     vault.anchor_job(job.job_id)
     terms = ad.calls[0]["terms"]
-    assert terms["fee_usdc"] == "0.000000"
+    assert "fee_usdc" not in terms
 
 
 def test_settled_at_ms_included(vault):

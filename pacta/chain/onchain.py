@@ -164,8 +164,13 @@ class OnchainEscrowRunner:
             abi=art["abi"], bytecode=art["bytecode"]["object"])
         operator = self.adapter.operator_account()
         tx_hash = contract.constructor(*ctor_args).transact({"from": operator})
+        # PACTA-ONC-5-TUTARLILIK: ``_wait``/``_receipt``-ile-AYNI-normalleştirme:
+        # str-haş-dokunulmadan-geçer, ham-bytes/HexBytes-0x-hex'e-çevrilir.
+        # Eskiden-doğrudan-``Web3.to_hex(tx_hash)``-çağrısı-str-haş-verilirse-
+        # web3-8'de-'Unsupported type'-TypeError-fırlatır-ve-deploy-çökerdi.
         receipt = self.w3.eth.wait_for_transaction_receipt(
-            Web3.to_hex(tx_hash), timeout=self.adapter.receipt_timeout_s)
+            tx_hash if isinstance(tx_hash, str) else Web3.to_hex(tx_hash),
+            timeout=self.adapter.receipt_timeout_s)
         if int(receipt.get("status", 0) or 0) != 1:
             raise OnchainContractError(
                 f"deploy-revert: {name} status={receipt.get('status')}")
@@ -206,9 +211,15 @@ class OnchainEscrowRunner:
         self._wait(tx)
 
     def _wait(self, tx_hash: Any) -> Dict[str, Any]:
+        # PACTA-ONC-5-DUZELTME: str- ve-bytes/HexBytes-hash'lerin-İKİSİ-de-
+        # kabul-edilir (web3-8 ``to_hex``-str-argümanını-'Unsupported type'-
+        # ile-REDDEDERDİ → tip-ipucu-str-dostu-oldugu-halde-dışarıdan-str-
+        # veren-çağrıcı-çöküyordu). Module-level ``_receipt``-ile-aynı-
+        # normalleştirme: str-dokunulmaz, ham-bytes→0x-hex.
         from web3 import Web3
+        h = tx_hash if isinstance(tx_hash, str) else Web3.to_hex(tx_hash)
         return dict(self.w3.eth.wait_for_transaction_receipt(
-            Web3.to_hex(tx_hash), timeout=self.adapter.receipt_timeout_s))
+            h, timeout=self.adapter.receipt_timeout_s))
 
     def _record(self, name: str, receipt: Dict[str, Any],
                 onchain_status: Optional[str] = None,
@@ -221,6 +232,15 @@ class OnchainEscrowRunner:
         # verir ( "b'\\x0f1…'") ve-receipt-fetch-edilemez. to_hex-ile-normalle.
         from web3 import Web3
         tx_hash = receipt.get("transactionHash")
+        # PACTA-ONC-6-DUZELTME: eksik/None/boş-tx-hash-artık-``Web3.
+        # to_hex(None)``-TypeError'uyla-DEĞİL, fail-closed-OnchainContractError
+        # ile-reddedilir — haşsiz-bir-adım-kanıt-zincirine-giremez ( sessiz-
+        # boş-kayıt-denetim-izini-kopartırdı).
+        if not tx_hash:
+            raise OnchainContractError(
+                f"receipt-transactionHash-yok: {name!r}-adımı-için-tx-haşi-"
+                f"olmayan-receipt-kayıt-edilemez (bozuk/eksik-receipt — "
+                f"kanıt-zinciri-kopuk)")
         return OnchainStep(
             name=name,
             tx_hash=Web3.to_hex(tx_hash) if not isinstance(tx_hash, str) else tx_hash,

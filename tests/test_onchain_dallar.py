@@ -349,6 +349,8 @@ class TestDeploy:
     * status=0 → OnchainContractError('deploy-revert')
     * contractAddress-YOK → OnchainContractError('deploy-address-yok')
     * artifact-yüklenemezse → OnchainContractError ( forge-önerisi)
+    * PACTA-ONC-5-TUTARLILIK: ``_deploy``-da-str-tx-hash-kabul-edilir ( eskiden
+      ``Web3.to_hex(str)``-'Unsupported type'-TypeError'üyla-deploy-çökerdi)
     """
 
     def test_basari_alanlar(self, runner, eth):
@@ -399,13 +401,27 @@ class TestDeploy:
         r = runner_yap(_Eth(adres="0xSABIT" + "0" * 33))
         assert r.deploy().vault_address.startswith("0xSABIT")
 
+    def test_deploy_str_tx_hash_kabul_edilir(self, runner, eth, monkeypatch):
+        """BULGU (DUZELTILDI PACTA-ONC-5-TUTARLILIK): ``_deploy``-deki-haş-
+        normalleştirilmesi-``_wait``/``_receipt``-ile-aynılaştırıldı. Eskiden
+        ``Web3.to_hex(tx_hash)``-davasıza-str-önerilirse-web3-8-'Unsupported
+        type'-TypeError'u-fırlatırdı ( tip-ipucu-str-dostu-ama-str-crash —
+        ONC-5'in-kardeş-yolu-yakalanmamıştı). Artık-str-dokunulmadan-iletilir."""
+        monkeypatch.setattr(
+            _Ctor, "transact", lambda self, kw=None: DEPLOY_HEX)
+        sonuc = runner.deploy()
+        assert sonuc.vault_address.startswith("0x")
+        assert sonuc.usdc_address.startswith("0x")
+        assert eth.wait_cagrilar[-1][0] == DEPLOY_HEX  # str-dokunulmadı
+
 
 # ========================================================= _mint / _wait
 class TestMintVeWait:
     """_mint/_wait dalları:
     * _mint: faucet(to, amount) operator'den-transact-edilir
-    * _wait: to_hex-normalleştirme ( bytes→hex) + adapter-timeout'u-aktarır;
-      str-hash-REDDEDER ( web3-8 to_hex — BULGU)
+    * PACTA-ONC-5: _wait-str-ve-bytes/HexBytes-hash'lerin-İKİSİNİ-de-kabul-
+      eder ( str-dokunulmaz, ham-bytes→0x-hex-normalleştirme) +
+      adapter-timeout'u-aktarır
     * _wait: dict-kopyası-döner ( sonradan-mutasyondan-etkilenmez)
     """
 
@@ -424,15 +440,24 @@ class TestMintVeWait:
         # to_hex-normalleştirildi → receipt-hash'i-str-hex
         assert rc["transactionHash"] == Web3.to_hex(b"\x01\x02\x03")
 
-    def test_wait_str_hash_reddedilir(self, runner, eth):
-        """BULGU ( karakterizasyon; üretime-DOKUNULMADI): _wait herhangi-bir
-        tx-hash-türünü-kabul-etse-de-içeride-web3-8 ``to_hex``-str-argümanı-
-        REDDEDER ( 'Unsupported type: ... and not str'). Yani _wait'e-str-hash
-        verilemez — tüm-internal-çağrılar bytes-gönderdiği-için pratik-etkisi
-        yok, AMA tip-ipucu-str-dostudur ve dışarıdan-str-veren-çağrıcı-çöker."""
+    def test_wait_str_hash_kabul_edilir(self, runner, eth):
+        """BULGU (DUZELTILDI PACTA-ONC-5): _wait-artık-str-tx-hash'i-KABUL-
+        eder ( eskiden-içerideki-web3-8 ``to_hex``-str-argümanını-'Unsupported
+        type'-TypeError'siyle-REDDEDİYORDU — tip-ipucu-str-dostu-olduğu-halde-
+        dışarıdan-str-veren-çağrıcı-çöküyordu). str-dokunulmadan-iletilir."""
         runner.deploy()
-        with pytest.raises(TypeError, match="Unsupported type"):
-            runner._wait("0xabc")
+        rc = runner._wait("0xabc")
+        assert rc["status"] == 1
+        assert rc["transactionHash"] == "0xabc"
+        assert eth.wait_cagrilar[-1][0] == "0xabc"  # str-dokunulmadı
+
+    def test_wait_hexbytes_hash_to_hex(self, runner, eth):
+        """PACTA-ONC-5: HexBytes ( web3'ün-gerçek-dönüş-tipi) da-0x-hex'e-
+        normalleşir."""
+        from hexbytes import HexBytes
+        runner.deploy()
+        rc = runner._wait(HexBytes(b"\x0a\x0b"))
+        assert rc["transactionHash"] == Web3.to_hex(b"\x0a\x0b")
 
     def test_wait_timeout_adapter_den_gelir(self, runner, eth):
         runner.deploy()
@@ -450,7 +475,8 @@ class TestMintVeWait:
 class TestRecord:
     """_record dalları:
     * status: True→1 / False→0 / None→0 / 0→0 / 1→1 / 2→2 ( geçiş)
-    * transactionHash: str-dokunulmaz / bytes→to_hex / eksik→None-güvenli
+    * transactionHash: str-dokunulmaz / bytes→to_hex /
+      eksik-None-boş → fail-closed-OnchainContractError ( PACTA-ONC-6)
     * blockNumber/gasUsed: int-zorlanır / eksik→0
     * events: _vault-None → [] / logs-var → decode ( ilk-eşleşme-kazanır /
       eşleşmeyen-atlanır / decoded-None-atlanır)
@@ -488,14 +514,22 @@ class TestRecord:
                                     "transactionHash": "0xdead"})
         assert adim.tx_hash == "0xdead"
 
-    def test_tx_hash_eksik_type_error(self, runner, eth):
-        """BULGU ( karakterizasyon; üretime-DOKUNULMADI): _record receipt'inde
-        transactionHash-YOKSA ``Web3.to_hex(None)`` TypeError-fırlatır ( 'Exactly
-        one of the passed values can be specified'). get()-varsayılanı-YOK —
-        eksik-haşli-receipt-işlenemez. Gerçek-receiptlerde her-zaman-bulunduğu
-        için pratik-etkisi-düşük."""
-        with pytest.raises(TypeError, match="Exactly one of the passed values"):
+    def test_tx_hash_eksik_fail_closed_hata(self, runner, eth):
+        """BULGU (DUZELTILDI PACTA-ONC-6): _record-receipt'inde
+        transactionHash-YOKSA-artık-ham-``Web3.to_hex(None)``-TypeError'u
+        DEĞİL, fail-closed-``OnchainContractError``-fırlatılır. Haşsiz-bir-
+        adım-sessizce-boş-hash'le-kanıt-zincirine-giremez."""
+        with pytest.raises(OnchainContractError) as hb:
             runner._record("x", {"status": 1, "blockNumber": 1, "gasUsed": 2})
+        assert "receipt-transactionHash-yok" in str(hb.value)
+
+    @pytest.mark.parametrize("bos", [None, ""])
+    def test_tx_hash_none_veya_bos_fail_closed(self, runner, eth, bos):
+        """PACTA-ONC-6: None-ve-boş-str-ikisi-de-aynı-fail-closed-kapıdan-
+        geçer ( kanıt-adımı-haşsiz-OLAMAZ)."""
+        with pytest.raises(OnchainContractError,
+                           match="receipt-transactionHash-yok"):
+            runner._record("x", {"status": 1, "transactionHash": bos})
 
     @pytest.mark.parametrize("alan,beklenen", [("block_number", 42),
                                                ("gas_used", 99)])

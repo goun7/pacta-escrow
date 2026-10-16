@@ -224,11 +224,12 @@ class EvmChainAdapter:
         # status'u None dönebilir; ama 0 (revert) ASLA 1'e zorlanmamalı.
         # Önceki `receipt.get("status", 1) or 1` — `0 or 1` = 1 olduğundan
         # revert'leri sessizce "başarılı" maskeliyordu (finans-kritik bug).
+        # PACTA-3-triage: ``int()``-bool-True/False'u-zaten-1/0-yapar —
+        # sonraki-``isinstance(status, bool)``-dalı-HİÇBİR-zaman-
+        # çalışamazdı ( ölü-kod); kaldırıldı. Davranış-aynı: True→1,
+        # False/0→0 (revert → anchor-reverted-hatası-aşağıda).
         _status_raw = receipt.get("status", 1)
         status = int(_status_raw) if _status_raw is not None else 1
-        # EVM-status: 1=başarılı, 0=revert. Bazı-backendler-True/False-döner.
-        if isinstance(status, bool):
-            status = 1 if status else 0
         # web3-8.x: send_transaction-HexBytes-döner; str()-bozuk-bytes-repr-
         # verir ( "b'\\xff…'"). HexBytes-durumunda-to_hex-ile-0x-hex'e-
         # normalleştirilmeli — yoksa-tx_hash-zincirden-fetch-edilemez.

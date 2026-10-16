@@ -94,7 +94,10 @@ def create_lock(req: LockRequest) -> Dict[str, Any]:
         "job_id": job.job_id,
         "status": job.status.value,
         "amount_usdc": str(job.amount_usdc),
-        "protocol_fee_usdc": str(job.fee_collected_usdc),
+        # PACTA-VLT-4: fee_collected-settle'da-dolar; lock-anında-"0.000000"
+        # göstermek-sessiz-sıfır-ücret-vaadiydi. Sözleşme-ücreti-politikadan
+        # hesaplanır (gerçek-fee-settle_escrow'da-tahsil-edilir).
+        "protocol_fee_usdc": str(job.calculate_fee()),
         "net_seller_usdc": str(job.net_seller_amount())
     }
 

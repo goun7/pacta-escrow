@@ -158,7 +158,10 @@ class TestSolvencyInvariant:
     * aktiv-OLMAYAN durumlar ( INITIALIZED/SETTLED/SLASHED_REFUNDED/
       AUTO_REFUNDED_TIMEOUT) sayılmaz
     * bond'lar yalnızca DISPUTED/ARBITRATION_IN_PROGRESS işlerinde sayılır
-    * BULGU: yetim-dispute ( job_id jobs'te yok) → KeyError ( üretim-hatası)
+    * PACTA-VLT-1: yetim-dispute ( job_id jobs'te yok) → fail-closed-
+      InvariantViolationError ( eskiden-ham-KeyError-üretim-hatasıydı)
+    * PACTA-VLT-3-TAMAMLAMA: kasa-bakiye-kaydı-EKSİK ( kirilmis-defter) →
+      ham-KeyError-DEĞİL, fail-closed-InvariantViolationError
     * get_vault_stats yoluyla de aynı karar-verilir
     """
 
@@ -240,6 +243,26 @@ class TestSolvencyInvariant:
         with pytest.raises(InvariantViolationError) as hb:
             kasa.check_solvency_invariant()
         assert "Orphan dispute" in hb.value.message
+
+    def test_bakiye_kaydi_eksik_invariant_hatasi(self, kasa):
+        """BULGU (DUZELTILDI PACTA-VLT-3-TAMAMLAMA): denetlenen-token'in-KASA-
+        KAYDI-eksikse ( kirilmis-bakiye-defteri) eskiden HAM ``KeyError`` dışarı
+        sızıyordu — ne yetersizlik-ne-yetim-dispute dalına-girerdi. Artık
+        fail-closed ``InvariantViolationError`` ( PACTA-VLT-1 örneği: kayıt-
+        bütünlüğü-ihlali-kendi-başına-bir-invariant-bozukluğudur; bakiyeyi-
+        sessizce-0-saymak-invariant'i-zayiflatirdi)."""
+        _kilitle(kasa, Decimal("100"))
+        del kasa.ledger_balances[USDC]
+        with pytest.raises(InvariantViolationError) as hb:
+            kasa.check_solvency_invariant()
+        assert "Solvency Invariant Broken" in hb.value.message
+        assert "Kasa-bakiye-kaydı-EKSİK" in hb.value.message
+
+    def test_bakiye_kaydi_mevcut_normal_yol_bozuk_degil(self, kasa):
+        """Koruma-pin: onarım-normal-yolu-BOZMAZ — taze-kasa-defterinde-USDC-
+        kaydı-vardır ( 0.000000) ve invariant-True-döner ( KeyError-yok)."""
+        assert USDC in kasa.ledger_balances
+        assert kasa.check_solvency_invariant() is True
 
 
 # ================================================ create_and_lock_escrow
@@ -677,7 +700,8 @@ class TestAnchorJob:
     * chain_adapter=None → ChainUnavailableError ( AT-194 dürüst-hata)
     * iş-yok → EscrowNotFoundError
     * başarı: terms-alanları + anchor-aktarılır + job.chain_anchor-ayarlanır
-    * fee_collected None/YOK → terms'te fee_usdc YOK / VAR → eklenir
+    * PACTA-VLT-4: fee_collected None ( settle-öncesi-varsayılan) →
+      terms'te fee_usdc YOK / settle-sonrası-gerçek-değer → eklenir
     * settled_at_epoch_ms YOK/0 → terms'te YOK / VAR → eklenir
     * anchor_kind-çağrıya-aktarılır ( varsayılan: settlement)
     """
@@ -708,8 +732,10 @@ class TestAnchorJob:
         assert terms["status"] == "ESCROW_LOCKED"
         assert terms["buyer"] == ALICI
         assert terms["seller"] == SATICI
-        # fee_collected_usdc varsayılanı 0.000000 ( None-DEĞİL) → fee_usdc-VAR
-        assert terms["fee_usdc"] == "0.000000"
+        # BULGU (DUZELTILDI PACTA-VLT-4): fee_collected_usdc varsayılanı artık
+        # None ("henüz-tahsil-edilmedi") — settle-ÖNCESİ-bir-işin-zincir-bağı-
+        # terms'ine sahte "fee_usdc=0.000000" sabitlenMEZ ( sessiz-sıfır-ücret).
+        assert "fee_usdc" not in terms
         assert "settled_at_ms" not in terms
 
     def test_fee_settled_olunca_terms_eklenir(self, kasa):
@@ -1151,7 +1177,11 @@ class TestGetVaultStats:
     """get_vault_stats dalları:
     * boş-kasa → sıfır-sayılar + bakiye-str + is_solvent True
     * dolu-kasa → iş/dispute/karar-sayıları + bakiye-str-olarak
-    * is_solvent-check_solvency_invariant-ile-aynı-karar → yetersizlikte-HATA
+    * PACTA-VLT-3: yetersiz-kasa/yetim-dispute → ÇÖKME-YOK; is_solvent=False
+      + solvency_error-mesajı + açık-uyarı ( raporlama-okuması-her-zaman-
+      okunabilir-kalır; gerçeği-saklamaz)
+    * PACTA-VLT-3-TAMAMLAMA: kasa-bakiye-kaydı-EKSİK ( kirilmis-defter) de
+      ÇÖKMEZ — aynı-durum-raporu ( eskiden-ham-KeyError-metriği-500-yapardı)
     """
 
     def test_bos_kasa(self, kasa):
@@ -1179,15 +1209,48 @@ class TestGetVaultStats:
         assert kasa.get_vault_stats()["balances"][USDC] == "100.000000"
         assert isinstance(kasa.get_vault_stats()["balances"][USDC], str)
 
-    def test_yetersizlikte_hata(self, kasa):
-        """BULGU ( karakterizasyon): get_vault_stats-içindeki
-        check_solvency_invariant-çağrısı-yetersiz-kasada-InvariantViolationError
-        fırlatır — yani 'stats'-okuma-aslında-solvensiz-denetim-yapar ve
-        raporlama-amaçlı-okuma-da-çökebilir."""
+    def test_yetersizlikte_durum_raporlanir(self, kasa):
+        """BULGU (DUZELTILDI PACTA-VLT-3): get_vault_stats-artık-yetersiz-
+        kasada-InvariantViolationError-FIRLATMAZ; solvensizlik-bir-DURUM-
+        olarak-döner (is_solvent=False + solvency_error) + açık-uyarı.
+        Eskiden-raporlama-amaçlı-okuma-çöküyordu (monitoring-endpoint'i-500)."""
         is_ = _kilitle(kasa, Decimal("100"))
         kasa.ledger_balances[USDC] = Decimal("50")
-        with pytest.raises(InvariantViolationError):
-            kasa.get_vault_stats()
+        with pytest.warns(UserWarning, match="solvency-invariant-BOZUK"):
+            istatistik = kasa.get_vault_stats()
+        assert istatistik["is_solvent"] is False
+        assert "Solvency Invariant Broken" in istatistik["solvency_error"]
+        assert istatistik["total_jobs"] == 1
+        # Gerçek-bakiye-gizlenmez ( sıfıra-maskelenmez):
+        assert istatistik["balances"][USDC] == "50"
+
+    def test_yetim_dispute_durum_raporlanir(self, kasa):
+        """PACTA-VLT-3: VLT-1-in-yetim-dispute-invariant-hatası-da-stats-
+        okumasını-çökertmez; aynı-durum-raporu-ile-döner."""
+        kasa.disputes["d1"] = DisputeClaim(
+            job_id="yok-boyle-is", claimant_address=ALICI,
+            bond_amount_usdc=Decimal("1"), reason="sebep", evidence_hash="0xK")
+        with pytest.warns(UserWarning, match="solvency-invariant-BOZUK"):
+            istatistik = kasa.get_vault_stats()
+        assert istatistik["is_solvent"] is False
+        assert "Orphan dispute" in istatistik["solvency_error"]
+        assert istatistik["total_disputes"] == 1
+
+    def test_kirilmis_defter_cokmez_durum_raporlanir(self, kasa):
+        """BULGU (DUZELTILDI PACTA-VLT-3-TAMAMLAMA): kasa-bakiye-kaydı-EKSİKSE
+        ( kirilmis-defter) eskiden ``get_vault_stats``-içinden-ham-KeyError-
+        çıkardı — yani-metrik/monitoring-okuması-500'e-düşerdi ( VLT-3'ün-
+        ikinci-çöküş-yolu, ilk-onarımda-yakalanmamıştı). Artık-aynı-durum-
+        raporu ( is_solvent=False + solvency_error + uyarı)."""
+        _kilitle(kasa, Decimal("100"))
+        del kasa.ledger_balances[USDC]
+        with pytest.warns(UserWarning, match="solvency-invariant-BOZUK"):
+            istatistik = kasa.get_vault_stats()
+        assert istatistik["is_solvent"] is False
+        assert "Kasa-bakiye-kaydı-EKSİK" in istatistik["solvency_error"]
+        assert istatistik["total_jobs"] == 1
+        # Eksik-kayıd-sessizce-"0"a-maskeLENMEZ — balances-da-gerçeği-gösterir:
+        assert USDC not in istatistik["balances"]
 
 
 # ====================================================== özel-durum hiyerarşisi

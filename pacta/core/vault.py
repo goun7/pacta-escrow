@@ -9,6 +9,7 @@ from __future__ import annotations
 import time
 import hashlib
 import os  # AT-184-BULGU-3: PACTA_REQUIRE_CALLER_ROLE-ortam-kapısı
+import warnings  # PACTA-VLT-3: solvensizlik-raporunda-acik-uyari
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Dict, Optional, Tuple, List, Any
 from web3 import Web3
@@ -123,6 +124,19 @@ class PactaEscrowVault:
             }:
                 active_bonds += d.bond_amount_usdc
         required_minimum = active_locked + active_bonds
+        # PACTA-VLT-3-TAMAMLAMA ( devralinan-isi-kapanisi): denetlenen-token'in
+        # KASA-KAYDI-EKSİKSE eskiden ham ``KeyError`` dışarı sızıyordu — yani
+        # "kirilmis-kasa"da hem ``check_solvency_invariant`` hem de ``/metrics``
+        # üstünden ``get_vault_stats`` ÇÖKÜYORDU ( raporlama-okuması-500'e-
+        # düşerdi; VLT-3'ün-ikinci-çöküş-yolu-yakalanmiyordu). PACTA-VLT-1'in
+        # örneği: referans-/kayıt-bütünlüğü-ihlali-kendi-başına-bir-invariant-
+        # bozukluğudur → fail-closed-ANLAMLI-hata ( sessiz-0-gibi-saymak-YOK).
+        if self.USDC_TOKEN not in self.ledger_balances:
+            raise InvariantViolationError(
+                "Solvency Invariant Broken! Kasa-bakiye-kaydı-EKSİK: "
+                f"ledger_balances[{self.USDC_TOKEN}] bulunamadı "
+                "( bakiye-defteri-bozuk — solvensi-denetlenemez)"
+            )
         actual_balance = self.ledger_balances[self.USDC_TOKEN]
 
         if actual_balance < required_minimum:
@@ -378,6 +392,8 @@ class PactaEscrowVault:
             "seller": str(job.seller_address),
         }
         if job.fee_collected_usdc is not None:
+            # PACTA-VLT-4: settle-öncesi-None → fee_usdc-terms'e-KONMAZ
+            # ( sessiz-"fee=0"-sabitlemesi-YOK); settle-sonrası-gerçek-değer.
             terms["fee_usdc"] = str(job.fee_collected_usdc)
         if job.settled_at_epoch_ms:
             terms["settled_at_ms"] = str(job.settled_at_epoch_ms)
@@ -633,11 +649,32 @@ class PactaEscrowVault:
         return outcome
 
     def get_vault_stats(self) -> Dict[str, Any]:
-        """Returns snapshot of current vault health, balances, and job counts."""
-        return {
+        """Returns snapshot of current vault health, balances, and job counts.
+
+        PACTA-VLT-3-DUZELTME: raporlama-okuması-kasayı-ÇÖKERTMEZ. Yetersiz-
+        kasa-veya-yetim-dispute-durumunda-eskiden-``check_solvency_invariant``
+        istisnası-dışarı-sızıyordu (monitoring-/metrics-endpoint'i-500'e-
+        düşüyordu). Artık-solvensizlik-bir-DURUM-olarak-raporlanır:
+        ``is_solvent=False`` + ``solvency_error``-mesajı + açık-uyarı
+        (fail-closed: durum-GİZLENMEZ, ama-okuma-çökmez). Onarım-kararı-
+        çağıranındır (healthz/check_solvency_invariant).
+        PACTA-VLT-3-TAMAMLAMA: kasa-bakiye-kaydı-EKSİKSE ( kirilmis-defter)
+        de-aynı-dal-çalışır — ``check_solvency_invariant``-artık-bu-ihlali-
+        ``InvariantViolationError``-olarak-sinyaller, dolayısıyla-buradan-da
+        ham-KeyError-sızMAZ.
+        """
+        stats: Dict[str, Any] = {
             "total_jobs": len(self.jobs),
             "total_disputes": len(self.disputes),
             "total_resolved_outcomes": len(self.outcomes),
             "balances": {k: str(v) for k, v in self.ledger_balances.items()},
-            "is_solvent": self.check_solvency_invariant()
         }
+        try:
+            stats["is_solvent"] = self.check_solvency_invariant()
+        except InvariantViolationError as exc:
+            stats["is_solvent"] = False
+            stats["solvency_error"] = exc.message
+            warnings.warn(
+                f"vault-stats: solvency-invariant-BOZUK — is_solvent=False "
+                f"({exc.message})", stacklevel=2)
+        return stats
