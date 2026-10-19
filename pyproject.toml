@@ -32,3 +32,6 @@ pacta = "pacta.cli:main"
 pythonpath = ["."]
 testpaths = ["tests"]
 addopts = "-v --strict-markers"
+
+[tool.setuptools]
+packages = ["pacta"]
