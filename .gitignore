@@ -2,3 +2,8 @@ __pycache__/
 *.pyc
 .coverage
 .pytest_cache/
+
+# build-artefaktlari (G40, 2026-10-19)
+build/
+dist/
+*.egg-info/
