@@ -1,32 +1,19 @@
-"""G39-pini: README'nin test-sayisi-iddiasi gercek-collect'e-esit.
+"""G39/G42-pini: README'nin test-sayisi-iddiasi gercek-kosumla-ayni.
 
-Pacta-ilk-PyPI-yayini-oncesi ( 2026-10-19) eklendi. README "1.660
-passed" iddia-ediyor; bu-pin otomatik-collect ile ayni-olmazsa-KIRMIZI.
+Pacta-ilk-PyPI-yayini-oncesi ( 2026-10-19) eklendi; G44-MCP-serveri
+( 2026-10-20) ile birlikte gercek-passed-sayisina-strict-hale-getirildi.
 
-Kural ( G27/G28/G34/G35/G37/G38-deseni): README-nin-soyledigi-ile
+Kural ( G27/G28/G34/G35/G37/G38/G42-deseni): README-nin-soyledigi-ile
 olctugumuz-ayni-olmali ("tamamlanma"-olcutumuz-bu).
 
-Not: Pacta-nin-pytest-konfigurasyonu-ozet-satirini-basari ( 1666
-tests collected), bu-yuzden-iki-yol-da-kullanilir:
-( 1) "N tests collected"-ozet-satirindan, ( 2) dosya-basi-test-sayisi
-toplamindan. Ikisinden-ilk-bulunan-gecerli.
+Olculen-deger: `pytest tests/ -q` ozet-satirindan "N passed". README-de
+ayni-N-yazmali ( pin-kendisi-pass-edince-N-artar; eklenen-her-test-icin
+README-guncellenmeli-yoksa-pin-KIRMIZI-olur).
 """
 import re
 import subprocess
 import sys
 from pathlib import Path
-
-
-def _collected_total(res_stdout: str) -> int:
-    # yol-1: "1666 tests collected" ozet-satiri
-    m = re.search(r"(\d+)\s+tests?\s+collected", res_stdout)
-    if m:
-        return int(m.group(1))
-    # yol-2: "tests/test_x.py: N" dosya-basi-sayim
-    total = 0
-    for mm in re.finditer(r"^tests/[\w./-]+\.py:\s*(\d+)\s*$", res_stdout, re.M):
-        total += int(mm.group(1))
-    return total
 
 
 def test_readme_test_count_is_not_stale():
@@ -35,12 +22,15 @@ def test_readme_test_count_is_not_stale():
     m = re.search(r"([\d.,]+)\s*passed", readme)
     assert m, "README-passed-satiri-bulunamadi"
     claimed = int(m.group(1).replace(".", "").replace(",", ""))
+    # pin-kendisini-disarida-birak ( sonsuz-oyyinelemeyi-onle)
     res = subprocess.run(
-        [sys.executable, "-m", "pytest", "tests/", "--collect-only", "-q",
+        [sys.executable, "-m", "pytest", "tests/", "-q",
+         "--ignore=%s" % str(Path(__file__).relative_to(root)),
          "-p", "no:cacheprovider"],
-        capture_output=True, text=True, cwd=str(root), timeout=600)
-    assert res.returncode == 0, res.stderr[-400:]
-    total = _collected_total(res.stdout)
-    assert total > 0, "collect-total-ayristirilamadi: %r" % res.stdout[-300:]
-    assert total >= claimed, (
-        "README-stale-test-sayisi: iddia=%d collect=%d" % (claimed, total))
+        capture_output=True, text=True, cwd=str(root), timeout=1800)
+    pm = re.search(r"(\d+)\s+passed", res.stdout)
+    assert pm, "ozet-satiri-ayristirilamadi: %r" % res.stdout[-300:]
+    total = int(pm.group(1))
+    assert total > 0, "passed-total-sifir: %r" % res.stdout[-300:]
+    assert total == claimed, (
+        "README-stale-test-sayisi: iddia=%d olculen=%d" % (claimed, total))
