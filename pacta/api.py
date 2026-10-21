@@ -13,9 +13,13 @@ from pacta.core.vault import PactaEscrowVault, EscrowNotFoundError, InvariantVio
 from pacta.models import EscrowPolicy, VerificationTier, EscrowStatus
 from pacta.verification.tier1_syntax import Tier1SyntacticValidator
 
+# Surum TEK-KAYNAKLI: __init__'in-okudugu-pyproject-degeri ( 3-yazinimdan-
+# kalinti "2026.1.0" sabitleri burada-da-vardi).
+from pacta import __version__ as _PACTA_VERSION
+
 app = FastAPI(
     title="Pacta Escrow & Autonomous Dispute Rail API",
-    version="2026.1.0",
+    version=_PACTA_VERSION,
     description="Production M2M Delivery-versus-Payment Escrow API for AI Agents (x402 / AP2)"
 )
 
@@ -60,7 +64,7 @@ def health_check() -> Dict[str, Any]:
     is_solvent = shared_vault.check_solvency_invariant()
     return {
         "status": "healthy",
-        "version": "2026.1.0",
+        "version": _PACTA_VERSION,
         "network": settings.network,
         "vault_solvency_invariant": "PASS" if is_solvent else "FAIL",
     }
