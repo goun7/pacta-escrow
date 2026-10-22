@@ -269,6 +269,16 @@ def test_kanit_cekirdegi_yoksa_none(monkeypatch):
 
 def test_kanit_cekirdegi_sys_modules_onbellegi(tmp_path, monkeypatch):
     """Modul sys.modules'te varsa tekrar yuklenmez (load-once)."""
+    # G48-2026-10-22: onc esi-test unpump_root'u-mocklamiyordu -> CI'da
+    # ( kardes-checkout-YOK) _kanit_cekirdegi-sys.modules-etmeden-None
+    # donuyordu ( test-False-KIRMIZI). Burada-disk-testiyle-ayni-kalip:
+    # gecerli-bir-kok-verecegiz-ki-load-once-dali-calissin.
+    kok = tmp_path / "stub-borsa"
+    kok.mkdir()
+    (kok / "kanit_cekirdegi.py").write_text("X = 1\n", encoding="utf-8")
+    (kok / "borsa_core.py").write_text("X = 1\n", encoding="utf-8")
+    monkeypatch.setattr(UnpumpPaymentBridge, "unpump_root",
+                        staticmethod(lambda: kok))
     mod = type(sys)("kanit_cekirdegi")
     mod.CANONICAL_ALANLAR = _KanitStub.CANONICAL_ALANLAR
     eski = sys.modules.get("kanit_cekirdegi")
