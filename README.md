@@ -163,11 +163,13 @@ v.settle_escrow(job.job_id, caller_address=buyer)  # rol-kapısı (AT-180/184)
 ## Test
 
 ```bash
-PYTHONPATH=. python3 -m pytest tests/ -q    # 1.666-passed (+5-skipped; onchain-anvil; MCP-server +6-testi-ile)
+PYTHONPATH=. python3 -m pytest tests/ -q    # 1.647-passed ( CI-temeli; mesh-cross-cikarildi)
 ```
 
-2026-10-19 gece-turu LEAD-ölçümü: **1.666 passed / 0 failed rc=0** ( 5
-skipped — onchain-anvil). Bu sayı, bu repodaki
+2026-10-19 gece-turu LEAD-ölçümü: **1.647 passed / 0 failed rc=0** ( 14
+skipped — onchain-anvil + mesh-cross). Bu sayı CI-temelidir ( 2026-10-22
+G48-CI-onarimi LEED-ölçümü: kardes-checkout'lar-tasindiktan-sonra;
+yerel-tam-mesh-1.667; CI'da-pin-testin-kendisi-de-1-ekler). Bu repodaki
 `tests/`-suitinin tamamıdır; `test_unpump_bridge.py`'nin Tamga-gate
 çapraz-testleri dahil ( `TamgaProtocol/tools/settlement_bind_verify.py`
 üzerinden üçüncü-proje-doğrulaması — bkz. §Tamga D5 köprüsü).

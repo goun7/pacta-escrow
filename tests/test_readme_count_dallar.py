@@ -44,9 +44,15 @@ def test_readme_test_count_is_not_stale():
     assert m, "README-passed-satiri-bulunamadi"
     claimed = int(m.group(1).replace(".", "").replace(",", ""))
     # pin-kendisini-disarida-birak ( sonsuz-oyyinelemeyi-onle)
+    # G48-2026-10-22: kardes-checkout'lar-gelistirme-makinesinde-var-ama-CI'da
+    # YOK -> mesh-cross-testler-lokalde-PASS-CI'da-SKIP -> sayi-makineye-bagli
+    # oldugu-icin-pin-yanlis-KIRMIZI-veriyordu. Cozum: alt-surecteki-sayimdan
+    # kardes-checkout-bagimli-iki-dosyayi-cikart ( README-de-CI-temeli-yazilir).
     res = subprocess.run(
         [sys.executable, "-m", "pytest", "tests/", "-q",
          "--ignore=%s" % str(Path(__file__).relative_to(root)),
+         "--ignore=tests/test_tamga_d5_bridge.py",
+         "--ignore=tests/test_unpump_bridge.py",
          "-p", "no:cacheprovider"],
         capture_output=True, text=True, cwd=str(root), timeout=1800)
     pm = re.search(r"(\d+)\s+passed", res.stdout)
