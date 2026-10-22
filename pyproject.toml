@@ -23,6 +23,11 @@ dependencies = [
 dev = [
     "pytest>=8.0.0",
     "pytest-cov>=5.0.0",
+    # G48-2026-10-22: starlette>=1.6 TestClient-icin-httpx2-ZORUNLU-kildi
+    # ( CI-starlette-1.9.0-kuruluyor). Oncesi: "RuntimeError: The
+    # starlette.testclient module requires the httpx2 package" -> 2-test-
+    # dosyasi-collection-patliyordu.
+    "httpx2>=0.40",
 ]
 
 [project.scripts]
